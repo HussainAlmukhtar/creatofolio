@@ -1,0 +1,2987 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+/* Admin touch mode (iPad etc.): `touch:` utilities apply only while <html>
+   carries data-touch, which src/lib/touchMode.ts sets on /admin pages when
+   the primary pointer is a finger. Desktop with a mouse never matches. */
+@custom-variant touch (&:where(html[data-touch], html[data-touch] *));
+
+/* Creatofolio — Custom Theme */
+/* "Warm sketchbook editorial": whitish paper, warm ink, restrained accents.
+   Primitives first; legacy palette names below are ALIASES kept so existing
+   bg-earth-* / var(--sunset-*) call sites keep working while the whole app
+   adopts the paper/ink look. New code should use the paper/ink tokens. */
+
+:root {
+  /* ── Paper (whitish, warm-neutral — NOT yellowish) ── */
+  --paper-0: #FDFCF8;   /* brightest sheet — cards, chips */
+  --paper-1: #F8F5EE;   /* the default page */
+  --paper-2: #F1ECDF;   /* warm tint — alt sections, hover washes */
+  --paper-3: #E7E0CE;   /* deep tint — panels, wells */
+
+  /* ── Ink ── */
+  --ink:       #2B2420; /* warm near-black — headings, primary actions */
+  --ink-soft:  #57493E; /* secondary text */
+  --ink-faint: #8C7F70; /* captions, placeholders */
+  --line: color-mix(in srgb, var(--ink) 16%, transparent); /* hairlines */
+
+  /* ── Accents (used sparingly) ── */
+  --accent-brand: #C05B3F; /* burnt sienna — links, focus, highlights */
+  --accent-cool:  #3F6C6E; /* teal ink — secondary accent */
+  --gold:         #C99B3F; /* marginalia gold — small flourishes */
+
+  /* ── "Digital" surface (dark section type) ── */
+  --digital-bg:  #14181A;
+  --digital-ink: #E9E7E1;
+
+  /* Section text color — DrawnSection sets [data-surface] and these
+     resolve per surface kind (digital override below). Paper/plain use
+     the ink defaults directly. */
+  --section-ink: var(--ink);
+  --section-ink-soft: var(--ink-soft);
+
+  /* Paper material textures (see .paper-material). Procedural SVG tiles,
+     inline data URIs — zero network cost, rasterised once per tile. Each
+     layer bakes its own opacity; they multiply onto the paper colour via
+     background-blend-mode. Layers: lit fibre TOOTH (feTurbulence →
+     feDiffuseLighting — the paper's surface relief), sparse FLECKS
+     (inclusions), faint FIBRES, and low-frequency MOTTLE (tone clouds). */
+  --tex-tooth-fine: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27240%27%20height%3D%27240%27%3E%3Cfilter%20id%3D%27f%27%20x%3D%270%27%20y%3D%270%27%20width%3D%27100%25%27%20height%3D%27100%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.6%27%20numOctaves%3D%274%27%20seed%3D%273%27%20stitchTiles%3D%27stitch%27%2F%3E%3CfeDiffuseLighting%20lighting-color%3D%27%23fff%27%20surfaceScale%3D%271.1%27%3E%3CfeDistantLight%20azimuth%3D%27225%27%20elevation%3D%2764%27%2F%3E%3C%2FfeDiffuseLighting%3E%3C%2Ffilter%3E%3Crect%20width%3D%27100%25%27%20height%3D%27100%25%27%20filter%3D%27url%28%23f%29%27%20opacity%3D%270.36%27%2F%3E%3C%2Fsvg%3E");
+  --tex-tooth-cold: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27300%27%20height%3D%27300%27%3E%3Cfilter%20id%3D%27f%27%20x%3D%270%27%20y%3D%270%27%20width%3D%27100%25%27%20height%3D%27100%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.085%27%20numOctaves%3D%274%27%20seed%3D%273%27%20stitchTiles%3D%27stitch%27%2F%3E%3CfeDiffuseLighting%20lighting-color%3D%27%23fff%27%20surfaceScale%3D%272.2%27%3E%3CfeDistantLight%20azimuth%3D%27225%27%20elevation%3D%2760%27%2F%3E%3C%2FfeDiffuseLighting%3E%3C%2Ffilter%3E%3Crect%20width%3D%27100%25%27%20height%3D%27100%25%27%20filter%3D%27url%28%23f%29%27%20opacity%3D%270.34%27%2F%3E%3C%2Fsvg%3E");
+  --tex-tooth-kraft: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27240%27%20height%3D%27240%27%3E%3Cfilter%20id%3D%27f%27%20x%3D%270%27%20y%3D%270%27%20width%3D%27100%25%27%20height%3D%27100%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.6%27%20numOctaves%3D%274%27%20seed%3D%273%27%20stitchTiles%3D%27stitch%27%2F%3E%3CfeDiffuseLighting%20lighting-color%3D%27%23fff%27%20surfaceScale%3D%271.3%27%3E%3CfeDistantLight%20azimuth%3D%27225%27%20elevation%3D%2762%27%2F%3E%3C%2FfeDiffuseLighting%3E%3C%2Ffilter%3E%3Crect%20width%3D%27100%25%27%20height%3D%27100%25%27%20filter%3D%27url%28%23f%29%27%20opacity%3D%270.35%27%2F%3E%3C%2Fsvg%3E");
+  --tex-tooth-news: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27240%27%20height%3D%27240%27%3E%3Cfilter%20id%3D%27f%27%20x%3D%270%27%20y%3D%270%27%20width%3D%27100%25%27%20height%3D%27100%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%271.1%27%20numOctaves%3D%274%27%20seed%3D%273%27%20stitchTiles%3D%27stitch%27%2F%3E%3CfeDiffuseLighting%20lighting-color%3D%27%23fff%27%20surfaceScale%3D%270.7%27%3E%3CfeDistantLight%20azimuth%3D%27225%27%20elevation%3D%2768%27%2F%3E%3C%2FfeDiffuseLighting%3E%3C%2Ffilter%3E%3Crect%20width%3D%27100%25%27%20height%3D%27100%25%27%20filter%3D%27url%28%23f%29%27%20opacity%3D%270.3%27%2F%3E%3C%2Fsvg%3E");
+  --tex-flecks: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27300%27%20height%3D%27300%27%3E%3Cfilter%20id%3D%27f%27%20x%3D%270%27%20y%3D%270%27%20width%3D%27100%25%27%20height%3D%27100%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.28%27%20numOctaves%3D%271%27%20seed%3D%2713%27%20stitchTiles%3D%27stitch%27%2F%3E%3CfeColorMatrix%20values%3D%270%200%200%200%200.28%200%200%200%200%200.22%200%200%200%200%200.16%200%200%200%2040%20-29.2%27%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D%27100%25%27%20height%3D%27100%25%27%20filter%3D%27url%28%23f%29%27%20opacity%3D%270.3%27%2F%3E%3C%2Fsvg%3E");
+  --tex-flecks-dense: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27300%27%20height%3D%27300%27%3E%3Cfilter%20id%3D%27f%27%20x%3D%270%27%20y%3D%270%27%20width%3D%27100%25%27%20height%3D%27100%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.28%27%20numOctaves%3D%271%27%20seed%3D%2713%27%20stitchTiles%3D%27stitch%27%2F%3E%3CfeColorMatrix%20values%3D%270%200%200%200%200.28%200%200%200%200%200.22%200%200%200%200%200.16%200%200%200%2040%20-29.2%27%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D%27100%25%27%20height%3D%27100%25%27%20filter%3D%27url%28%23f%29%27%20opacity%3D%270.6%27%2F%3E%3C%2Fsvg%3E");
+  --tex-fibres: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27360%27%20height%3D%27360%27%3E%3Cfilter%20id%3D%27f%27%20x%3D%270%27%20y%3D%270%27%20width%3D%27100%25%27%20height%3D%27100%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.018%200.55%27%20numOctaves%3D%272%27%20seed%3D%279%27%20stitchTiles%3D%27stitch%27%2F%3E%3CfeColorMatrix%20values%3D%270%200%200%200%200.35%200%200%200%200%200.28%200%200%200%200%200.18%200%200%200%2028%20-17.5%27%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D%27100%25%27%20height%3D%27100%25%27%20filter%3D%27url%28%23f%29%27%20opacity%3D%270.1%27%2F%3E%3C%2Fsvg%3E");
+  --tex-mottle: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27720%27%20height%3D%27720%27%3E%3Cfilter%20id%3D%27f%27%20x%3D%270%27%20y%3D%270%27%20width%3D%27100%25%27%20height%3D%27100%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.0045%27%20numOctaves%3D%273%27%20seed%3D%2721%27%20stitchTiles%3D%27stitch%27%2F%3E%3CfeColorMatrix%20values%3D%270%200%200%200%200.55%200%200%200%200%200.45%200%200%200%200%200.3%200%200%200%201.6%20-0.62%27%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D%27100%25%27%20height%3D%27100%25%27%20filter%3D%27url%28%23f%29%27%20opacity%3D%270.12%27%2F%3E%3C%2Fsvg%3E");
+  --tex-mottle-strong: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27720%27%20height%3D%27720%27%3E%3Cfilter%20id%3D%27f%27%20x%3D%270%27%20y%3D%270%27%20width%3D%27100%25%27%20height%3D%27100%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.0045%27%20numOctaves%3D%273%27%20seed%3D%2721%27%20stitchTiles%3D%27stitch%27%2F%3E%3CfeColorMatrix%20values%3D%270%200%200%200%200.55%200%200%200%200%200.45%200%200%200%200%200.3%200%200%200%201.6%20-0.62%27%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D%27100%25%27%20height%3D%27100%25%27%20filter%3D%27url%28%23f%29%27%20opacity%3D%270.3%27%2F%3E%3C%2Fsvg%3E");
+
+
+
+  /* ── Legacy aliases (deprecated — re-pointed at the paper/ink palette;
+        do not use in new code) ── */
+  --earth-sand: var(--paper-1);
+  --earth-tan: var(--paper-3);
+  --earth-terracotta: var(--accent-brand);
+  --earth-clay: var(--ink-soft);
+  --earth-brown: var(--ink);
+  --sunset-gold: var(--gold);
+  --sunset-coral: var(--accent-brand);
+  --sunset-rose: #B65A4C;
+  --sunset-purple: #7C6A80;
+  --sunrise-peach: var(--paper-2);
+  --sunrise-amber: var(--gold);
+  --calm-sky: #A9C3CF;
+  --calm-teal: var(--accent-cool);
+  --calm-sage: #93A387;
+  --calm-mist: var(--paper-2);
+  --calm-lavender: #B3A7BD;
+
+  /* Semantic Colors — shadcn's variable set, values re-pointed at the
+     paper/ink palette above (init generated neutral-gray oklch defaults;
+     hand-merged here to keep the whole app on one design language).
+     --accent below is shadcn's convention for a subtle hover/active wash
+     (distinct from --accent-brand, the site's actual brand accent used
+     for links/focus/highlights). */
+  --primary: var(--ink);
+  --primary-foreground: var(--paper-0);
+  --secondary: var(--paper-2);
+  --secondary-foreground: var(--ink);
+  --accent: var(--paper-2);
+  --accent-foreground: var(--ink);
+  --muted: var(--paper-3);
+  --muted-foreground: var(--ink-soft);
+  --background: var(--paper-1);
+  --foreground: var(--ink);
+  --card: var(--paper-0);
+  --card-foreground: var(--ink);
+  --popover: var(--paper-0);
+  --popover-foreground: var(--ink);
+  --destructive: #A03B2E;
+  --destructive-foreground: var(--paper-0);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--accent-brand);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-muted: var(--muted);
+
+  /* Earth tones */
+  --color-earth-sand: var(--earth-sand);
+  --color-earth-tan: var(--earth-tan);
+  --color-earth-terracotta: var(--earth-terracotta);
+  --color-earth-clay: var(--earth-clay);
+  --color-earth-brown: var(--earth-brown);
+
+  /* Sunset colors */
+  --color-sunset-gold: var(--sunset-gold);
+  --color-sunset-coral: var(--sunset-coral);
+  --color-sunset-rose: var(--sunset-rose);
+  --color-sunset-purple: var(--sunset-purple);
+  --color-sunrise-peach: var(--sunrise-peach);
+  --color-sunrise-amber: var(--sunrise-amber);
+
+  /* Cool colors */
+  --color-calm-sky: var(--calm-sky);
+  --color-calm-teal: var(--calm-teal);
+  --color-calm-sage: var(--calm-sage);
+  --color-calm-mist: var(--calm-mist);
+  --color-calm-lavender: var(--calm-lavender);
+
+
+  /* Paper/ink tokens (preferred for new code) */
+  --color-paper-0: var(--paper-0);
+  --color-paper-1: var(--paper-1);
+  --color-paper-2: var(--paper-2);
+  --color-paper-3: var(--paper-3);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-accent-brand: var(--accent-brand);
+  --color-accent-cool: var(--accent-cool);
+  --color-gold: var(--gold);
+  --color-digital-bg: var(--digital-bg);
+  --color-digital-ink: var(--digital-ink);
+  --color-section-ink: var(--section-ink);
+  --color-section-ink-soft: var(--section-ink-soft);
+
+  /* Body sans falls through to the Arabic companion for Arabic glyphs;
+     the display serif (Fraunces) has no Arabic, so its chain MUST include
+     --font-arabic too. */
+  --font-sans: var(--font-body), var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display-latin), var(--font-arabic), ui-serif, Georgia, serif;
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-display);
+  /* Accordion open/close (Radix sets --radix-accordion-content-height). */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
+/* Site typography (data/fonts.ts). The built-in next/font families, kept
+   under fixed names so a site that re-points --font-body / --font-display-
+   latin / --font-arabic (SiteFonts, on .landing-root) can still pick them.
+   Resolved here on <body>, where next/font defines the originals. */
+body {
+  --font-builtin-display: var(--font-display-latin);
+  --font-builtin-body: var(--font-body);
+  --font-builtin-arabic: var(--font-arabic);
+  --font-builtin-mono: var(--font-geist-mono);
+}
+/* Re-declared so text inherits the site's fonts, not <body>'s resolved list. */
+.landing-root,
+.site-fonts-scope {
+  font-family: var(--font-body), var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Base styles */
+html {
+  /* Avoids a white flash before Lenis takes over on the landing page. */
+  background: var(--background);
+}
+body {
+  font-family: var(--font-body), var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
+  /* svh, not vh: on mobile the address-bar show/hide cycle changes 100vh
+     and causes layout jumps; svh is stable (sections already use it). */
+  min-height: 100svh;
+  /* Prevents horizontal scrollbar during cabinet parallax/transforms.
+     Set in CSS (not inline style) to avoid an SSR hydration mismatch on
+     Next 16 — server serializes inline styles as kebab-case while React
+     hydrates them as camelCase. */
+  overflow-x: hidden;
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+/* Applied by CabinetStage's body scroll-lock during play mode only —
+   kills pull-to-refresh / overscroll glow while the touch hijack owns
+   the gesture, without disabling pull-to-refresh for normal browsing. */
+body.play-lock {
+  overscroll-behavior: none;
+}
+
+/* RTL support for Arabic */
+[dir="rtl"] {
+  text-align: right;
+}
+/* Latin display styles often add tracking; Arabic script must never be
+   letter-spaced (it breaks the connected letterforms). */
+[dir="rtl"] :lang(ar),
+:lang(ar) {
+  letter-spacing: 0;
+}
+
+/* Room transition animations */
+.room-enter {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.room-enter-active {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.room-exit {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.room-exit-active {
+  opacity: 0;
+  transform: scale(1.05);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Interactive element hover states */
+.interactive {
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.interactive:hover {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+}
+
+/* Atmospheric loading screen */
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background);
+  z-index: 100;
+}
+
+/* ─── Landing page ────────────────────────────────────────────── */
+
+@property --exit-progress {
+  /* Play-mode exit progress: 0 = fully zoomed in, 1 = back at rest.
+     Written per frame by CabinetStage's drain machine on <html> (inherits
+     so it reaches both the vignette inside .landing-root AND the chrome
+     portal'd to document.body). Chrome opacity is calc()'d from it so the
+     HUD/vignette/close FADE WITH the drain instead of snapping at the end. */
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+.landing-root {
+  /* Avoid layout shifts during the GSAP pin scrub. */
+  overflow-x: clip;
+  position: relative;
+}
+
+/* Vignette overlay during play mode. Pure CSS — a fixed-position
+   pseudo-element with a radial-gradient. Opacity 0 in scroll mode,
+   0.4 in transitioning-in / play / transitioning-out. Focuses the eye
+   on the centred cabinet and hides edge framing inconsistencies.
+   pointer-events: none so it doesn't block the close button or
+   wheel-hijack. */
+.landing-root::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+  background:
+    radial-gradient(
+      ellipse at center,
+      transparent 35%,
+      rgba(0, 0, 0, 0.55) 100%
+    );
+  opacity: 0;
+  transition: opacity 1.0s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.landing-root:not([data-landing-mode="scroll"])::after {
+  /* Engages during transitioning-in, holds during play. During the
+     drain-exit (wheel/swipe) --exit-progress runs 0 → 1 per frame, so
+     the vignette fades out in lockstep with the zoom instead of
+     snapping when the mode finally flips back to scroll. */
+  opacity: calc(1 - var(--exit-progress, 0));
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-root::after { transition: none; }
+}
+
+/* While the drain machine (or the ✕ exit tween) is writing per-frame
+   values, discrete opacity transitions must not re-ease every write —
+   the raw value IS the animation. CabinetStage toggles this attribute. */
+body[data-exit-draining="true"] .landing-root::after,
+body[data-exit-draining="true"] .game-hud,
+body[data-exit-draining="true"] .game-controls-hint,
+body[data-exit-draining="true"] .cabinet-stage__close {
+  transition: none;
+}
+/* The game's close button steps aside while the character creator is open:
+   on a narrow screen it would sit on the dialog's own close button. */
+body[data-character-creator] .cabinet-stage__close {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hero-section {
+  min-height: 100svh;
+  /* The same sketchbook paper as the sections (texture layers multiplied
+     over the soft top-lit wash), so the page is one material from the
+     first screen down — the flat gradient read as a different, cheaper
+     surface next to the textured sheets. */
+  background-color: var(--paper-1);
+  background-image:
+    var(--tex-mottle), var(--tex-flecks), var(--tex-tooth-fine),
+    radial-gradient(ellipse at top, var(--paper-0), var(--paper-1) 55%, var(--paper-2));
+  background-blend-mode: multiply;
+}
+
+/* ── Arcade scene (schemaVersion 8) ──
+   The hero is ONE world (the arcade section's aspect box) holding the machine
+   and the drawn art, seen through ONE camera, framed per device:
+
+     .arcade-stage  the device frame — its aspect fitted ("contain") inside the
+                    viewport, clipping, letterbox painted with the frame fill
+     .arcade-world  the scene, contained in the stage at camera scale 1 and
+                    moved by the camera vars (--cam-s/x/y/r + --cam-px/py)
+     .arcade-machine the grouped machine at its world placement
+
+   Desktop vs phone values arrive as -d / -m custom properties (ArcadeScene)
+   and are picked here by the arcade's single device rule: viewport ≤1023px,
+   OR (via the world's @container) a world narrower than 768px — the editor's
+   390px phone view. The JS camera (scroll keyframes, click-to-play) writes
+   inline --cam-* on .arcade-world, overriding the inherited rest camera.
+   See lib/arcadeCamera.ts for the transform maths. */
+.arcade-stage {
+  --frame-a: var(--frame-a-d, 1.5833);
+  --frame-fill: var(--frame-fill-d, transparent);
+  --cam-s: var(--rest-s-d, 1);
+  --cam-x: var(--rest-x-d, 50);
+  --cam-y: var(--rest-y-d, 50);
+  --cam-r: var(--rest-r-d, 0);
+  position: relative;
+  width: min(100vw, calc(100svh * var(--frame-a)));
+  aspect-ratio: var(--frame-a);
+  margin: 0 auto;
+  overflow: clip;
+  background: var(--frame-fill);
+}
+/* Public hero: hidden until the published arcade has loaded, then fades in
+   (HeroSection data-arcade-ready) — never a flash of the default cabinet. */
+.hero-section .arcade-stage {
+  transition: opacity 0.45s ease;
+}
+.hero-section[data-arcade-ready="false"] .arcade-stage {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-section .arcade-stage { transition: none; }
+}
+
+/* Desktop: fit the frame in the space BELOW the site header
+   (--site-header-h, measured by LandingPage), so on wide screens the whole
+   frame is visible at rest instead of its bottom sliding under the fold. The
+   frame sits at the TOP of that space (any spare height goes below it): the
+   drawing starts right under the header, never under a strip of paper. */
+@media (min-width: 1024px) {
+  /* A sticky header stays on screen: the hero is sized to the space under
+     it and pins just below it (useLandingMotion's pin start), so rest and
+     pinned look identical. */
+  .hero-section {
+    min-height: calc(100svh - var(--site-header-overlay, 0px));
+  }
+  .hero-section .arcade-stage {
+    width: min(100vw, calc((100svh - var(--site-header-h, 0px)) * var(--frame-a)));
+  }
+}
+
+/* Soft edges ("wide bleed"): on a window wider than the frame (every 16:9 /
+   ultra-wide desktop) the scene is NOT cut at the frame's sides any more. At
+   rest the stage lets the world run sideways to the window edges (it still
+   clips top and bottom), so the backdrop the author drew past the frame fills
+   the side strips instead of bare paper. The hero's own paper is then laid
+   back over the window's left and right edges by ::after (`background:
+   inherit` = the exact same texture, aligned) and faded inward on an eased
+   curve, so the drawing dissolves into the page at the window edge. (A mask on
+   the hero itself would also do it, but masking a layer that holds the huge
+   transformed drawings stops Chrome painting them.) A backdrop that runs out
+   before the window edge fades at its own edge (data-edge-fade below).
+   Desktop (≥1024px) only; phones keep their frame. The paper fades away as
+   the click-in dolly starts. Off with ArcadeConfig.softEdges. */
+@media (min-width: 1024px) {
+  .arcade-stage[data-mode="scroll"][data-soft-edges="true"] {
+    overflow-x: visible;
+    overflow-y: clip;
+  }
+  .hero-section:has(.arcade-stage[data-soft-edges="true"]) {
+    overflow-x: clip;
+  }
+  .hero-section:has(.arcade-stage[data-soft-edges="true"])::after {
+    /* 14% of the window per side: inside the paper strip on 16:9 and wider,
+       a soft vignette on narrower desktops. (Plain percentages: a stop
+       position built from custom properties left the mask invalid.) */
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background: inherit;
+    background-blend-mode: inherit;
+    -webkit-mask-image: linear-gradient(
+      to right,
+      #000 0,
+      rgb(0 0 0 / 0.9) 3%,
+      rgb(0 0 0 / 0.55) 7%,
+      rgb(0 0 0 / 0.15) 11%,
+      transparent 14%,
+      transparent 86%,
+      rgb(0 0 0 / 0.15) 89%,
+      rgb(0 0 0 / 0.55) 93%,
+      rgb(0 0 0 / 0.9) 97%,
+      #000 100%
+    );
+    mask-image: linear-gradient(
+      to right,
+      #000 0,
+      rgb(0 0 0 / 0.9) 3%,
+      rgb(0 0 0 / 0.55) 7%,
+      rgb(0 0 0 / 0.15) 11%,
+      transparent 14%,
+      transparent 86%,
+      rgb(0 0 0 / 0.15) 89%,
+      rgb(0 0 0 / 0.55) 93%,
+      rgb(0 0 0 / 0.9) 97%,
+      #000 100%
+    );
+    transition: opacity 0.35s ease;
+  }
+  /* Keyed on the landing root's mode (not :has() on the stage's data-mode:
+     Chrome doesn't re-match a pseudo-element's :has() when that attribute
+     flips, so the paper stayed over the zoomed-in machine). */
+  .landing-root:not([data-landing-mode="scroll"]) .hero-section::after {
+    opacity: 0;
+  }
+}
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  .hero-section::after { transition: none; }
+}
+/* A backdrop that doesn't reach past the furthest camera view (flagged by
+   ArcadeScene): fade its own edges so the zoomed-out views never end in a cut. */
+.drawn-asset-pos[data-edge-fade="true"] {
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0, rgb(0 0 0 / 0.45) 4%, #000 9%, #000 91%, rgb(0 0 0 / 0.45) 96%, transparent 100%),
+    linear-gradient(to bottom, transparent 0, rgb(0 0 0 / 0.45) 4%, #000 9%, #000 91%, rgb(0 0 0 / 0.45) 96%, transparent 100%);
+  mask-image:
+    linear-gradient(to right, transparent 0, rgb(0 0 0 / 0.45) 4%, #000 9%, #000 91%, rgb(0 0 0 / 0.45) 96%, transparent 100%),
+    linear-gradient(to bottom, transparent 0, rgb(0 0 0 / 0.45) 4%, #000 9%, #000 91%, rgb(0 0 0 / 0.45) 96%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+/* Editor: the frame IS the whole world, as wide as the canvas column. */
+.arcade-stage--editor {
+  width: 100%;
+  overflow: visible;
+}
+/* Editor camera preview: through the device frame, clipped like the site. */
+.arcade-stage--editor.arcade-stage--preview {
+  overflow: clip;
+  margin: 0 auto;
+  max-height: 80vh;
+  width: min(100%, calc(80vh * var(--frame-a)));
+}
+
+/* ── Arcade Studio editing chrome ── */
+.arcade-editor-frame {
+  padding: 28px 0 8px;
+}
+.arcade-editor-screen {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: rgba(255, 255, 255, 0.35);
+  font: 600 0.7rem/1 ui-monospace, monospace;
+  letter-spacing: 0.3em;
+}
+.arcade-machine-hitbox[data-selected] {
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
+}
+.arcade-machine-hitbox__tag {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  translate: -50% -6px;
+  white-space: nowrap;
+  border-radius: 4px;
+  background: #f59e0b;
+  color: #111;
+  padding: 1px 6px;
+  font: 600 11px/1.4 system-ui, sans-serif;
+  pointer-events: none;
+}
+.arcade-screen-rect {
+  border: 2px dashed #e11d48;
+  background: rgba(225, 29, 72, 0.12);
+  cursor: move;
+}
+.arcade-screen-rect__label {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  font: 600 10px/1.2 system-ui, sans-serif;
+  color: #fff;
+  background: #e11d48;
+  border-radius: 3px;
+  padding: 1px 4px;
+  pointer-events: none;
+}
+.arcade-frame {
+  border: 2px dashed rgba(14, 165, 233, 0.55);
+  border-radius: 2px;
+}
+.arcade-frame[data-kind="rest"] {
+  border-style: solid;
+  border-color: rgba(14, 165, 233, 0.8);
+}
+.arcade-frame[data-target="true"] {
+  border-color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.08);
+}
+.arcade-frame__label {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  translate: 0 -3px;
+  white-space: nowrap;
+  border-radius: 3px;
+  background: rgba(14, 165, 233, 0.9);
+  color: #fff;
+  padding: 0 5px;
+  font: 600 10px/1.5 system-ui, sans-serif;
+  pointer-events: none;
+}
+@media (max-width: 1023px) {
+  .arcade-stage {
+    --frame-a: var(--frame-a-m, 1.5833);
+    --frame-fill: var(--frame-fill-m, transparent);
+    --cam-s: var(--rest-s-m, 1);
+    --cam-x: var(--rest-x-m, 50);
+    --cam-y: var(--rest-y-m, 50);
+    --cam-r: var(--rest-r-m, 0);
+  }
+  /* The hero shrinks to the phone frame (plus a little air) rather than
+     leaving a near-empty 100svh screen around a landscape frame. */
+  .hero-section {
+    min-height: min(
+      100svh,
+      calc(min(100vw, 100svh * var(--frame-a-m, 1.5833)) / var(--frame-a-m, 1.5833) + 2.5rem)
+    );
+  }
+}
+/* While zoomed in, the scene may extend past the frame (the dolly centres
+   the screen in the VIEWPORT), and the hero must paint over the sections
+   below it (still below the vignette's z-40). */
+.arcade-stage:not([data-mode="scroll"]) {
+  overflow: visible;
+}
+.landing-root:not([data-landing-mode="scroll"]) .hero-section {
+  z-index: 39;
+}
+
+.arcade-world {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  /* Contained in the stage at scale 1: full width unless the frame is wider
+     than the world (then full height, via the aspect-ratio). */
+  width: calc(100% * min(1, var(--world-a) / var(--frame-a)));
+  transform-origin: calc(var(--cam-x) * 1%) calc(var(--cam-y) * 1%);
+  transform:
+    translate(var(--cam-px, 0px), var(--cam-py, 0px))
+    translate(calc(var(--cam-x) * -1%), calc(var(--cam-y) * -1%))
+    rotate(calc(var(--cam-r) * 1deg))
+    scale(var(--cam-s));
+}
+/* Promote a compositor layer ONLY while the camera actually moves (scroll
+   scrub, dolly, drain — toggled by useLandingMotion / CabinetStage). Holding
+   will-change while still freezes the raster at its old scale → the
+   zoomed art shows a scaled-up bitmap (the "pixelates when zoomed" bug).
+   Dropping it on settle re-rasters crisp at the settled scale. */
+.arcade-world.is-moving {
+  will-change: transform;
+}
+
+/* Phones: while playing, dim the scene behind the machine so the game reads
+   like the old fullscreen breakout. Sits at the machine's z (first in DOM →
+   just under it), so props in FRONT of the machine stay visible. */
+.arcade-world::before {
+  content: "";
+  position: absolute;
+  inset: -400%;
+  background: #0d0a08;
+  opacity: 0;
+  pointer-events: none;
+  z-index: var(--machine-z, 0);
+  transition: opacity 0.3s ease;
+}
+@media (max-width: 1023px) {
+  .arcade-stage:not([data-mode="scroll"]) .arcade-world::before {
+    opacity: calc(0.88 * (1 - var(--exit-progress, 0)));
+  }
+}
+body[data-exit-draining="true"] .arcade-world::before {
+  transition: none;
+}
+
+/* Scene assets: phones (≤1023px viewport) use the mobile placement even when
+   the world is wider than the @container breakpoint (tablets) — one device
+   rule for the whole arcade. The editor resolves devices via its column. */
+@media (max-width: 1023px) {
+  .arcade-world:not([data-editor]) .drawn-asset-pos {
+    left: var(--x-m);
+    top: var(--y-m);
+    width: var(--w-m);
+    height: var(--h-m);
+    transform: rotate(var(--rot-m, 0deg));
+  }
+  .arcade-world:not([data-editor]) .drawn-asset-pos.drawn-asset-pos--auto-h {
+    height: auto;
+  }
+  .arcade-world:not([data-editor]) .drawn-asset-pos[data-hide-mobile="true"] {
+    display: none;
+  }
+  .arcade-world:not([data-editor]) .drawn-asset-pos[data-hide-desktop="true"]:not([data-hide-mobile="true"]) {
+    display: block;
+  }
+}
+/* While playing: scene links/buttons can't be hit (taps belong to the game),
+   and props flagged by the foreground guard (or "fade while playing") fade
+   with the zoom. */
+.arcade-stage:not([data-mode="scroll"]) .arcade-world .drawn-asset-pos {
+  pointer-events: none;
+}
+@media (min-width: 1024px) {
+  .arcade-stage:not([data-mode="scroll"]) .drawn-asset-pos[data-fade-play-d="true"] {
+    opacity: var(--exit-progress, 0);
+  }
+}
+@media (max-width: 1023px) {
+  .arcade-stage:not([data-mode="scroll"]) .drawn-asset-pos[data-fade-play-m="true"] {
+    opacity: var(--exit-progress, 0);
+  }
+}
+
+/* ── The machine (one grouped object) ── */
+.arcade-machine {
+  --m-a: var(--m-a-d);
+  --screen-left: var(--screen-left-d);
+  --screen-top: var(--screen-top-d);
+  --screen-w: var(--screen-w-d);
+  --screen-h: var(--screen-h-d);
+  position: absolute;
+  left: var(--m-x-d);
+  top: var(--m-y-d);
+  width: var(--m-w-d);
+  rotate: var(--m-r-d);
+  aspect-ratio: var(--m-a);
+}
+/* Phone-art variant layers: only the active device's drawing shows. */
+.arcade-machine [data-variant="m"] {
+  display: none;
+}
+@container (max-width: 767px) {
+  .arcade-machine {
+    --m-a: var(--m-a-m);
+    --screen-left: var(--screen-left-m);
+    --screen-top: var(--screen-top-m);
+    --screen-w: var(--screen-w-m);
+    --screen-h: var(--screen-h-m);
+    left: var(--m-x-m);
+    top: var(--m-y-m);
+    width: var(--m-w-m);
+    rotate: var(--m-r-m);
+  }
+  .arcade-machine [data-variant="m"] { display: block; }
+  .arcade-machine [data-variant="d"] { display: none; }
+}
+@media (max-width: 1023px) {
+  .arcade-world:not([data-editor]) .arcade-machine {
+    --m-a: var(--m-a-m);
+    --screen-left: var(--screen-left-m);
+    --screen-top: var(--screen-top-m);
+    --screen-w: var(--screen-w-m);
+    --screen-h: var(--screen-h-m);
+    left: var(--m-x-m);
+    top: var(--m-y-m);
+    width: var(--m-w-m);
+    rotate: var(--m-r-m);
+  }
+  .arcade-world:not([data-editor]) .arcade-machine [data-variant="m"] { display: block; }
+  .arcade-world:not([data-editor]) .arcade-machine [data-variant="d"] { display: none; }
+}
+
+/* Idle motion scoped to one device (AmbientPreset.devices). Normal sections
+   and the editor switch device by their container width; the public arcade
+   switches by viewport (its one device rule, ≤1023px = phone). */
+@container (max-width: 767px) {
+  .ambient[data-ambient-devices="desktop"]:not(.arcade-world:not([data-editor]) .ambient) {
+    animation: none !important;
+  }
+}
+@container (min-width: 768px) {
+  .ambient[data-ambient-devices="mobile"]:not(.arcade-world:not([data-editor]) .ambient) {
+    animation: none !important;
+  }
+}
+@media (max-width: 1023px) {
+  .arcade-world:not([data-editor]) .ambient[data-ambient-devices="desktop"] {
+    animation: none !important;
+  }
+}
+@media (min-width: 1024px) {
+  .arcade-world:not([data-editor]) .ambient[data-ambient-devices="mobile"] {
+    animation: none !important;
+  }
+}
+.arcade-stage[data-mode="scroll"] .arcade-machine {
+  cursor: zoom-in;
+}
+.arcade-machine__body {
+  position: absolute;
+  inset: 0;
+  transition:
+    translate 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.35s ease;
+}
+.arcade-machine__layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+}
+.arcade-machine__back[data-shadow="true"] {
+  filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.35));
+}
+/* Back art → screen → CTA → front art (bezel, glare, a drooping paper). */
+.arcade-machine__back { z-index: 0; }
+.arcade-machine .cabinet-stage__screen { z-index: 1; }
+.cabinet-stage__cta-wrap { z-index: 2; }
+.arcade-machine__front { z-index: 3; }
+
+/* Hover on the whole machine (scroll mode, hover-capable pointers). */
+@media (hover: hover) {
+  .arcade-stage[data-mode="scroll"] .arcade-machine[data-hover="glow"]:hover .arcade-machine__body {
+    filter: drop-shadow(0 0 22px color-mix(in srgb, var(--gold) 65%, transparent));
+  }
+  .arcade-stage[data-mode="scroll"] .arcade-machine[data-hover="lift"]:hover .arcade-machine__body {
+    translate: 0 -2%;
+  }
+  .arcade-stage[data-mode="scroll"] .arcade-machine[data-hover="nudge"]:hover .arcade-machine__body {
+    animation: arcade-nudge 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+/* While playing, the machine holds perfectly still: an idle loop or hover
+   offset would move the game screen under the player's pointer (Phaser maps
+   clicks from the canvas rect it measured when play began). */
+.arcade-stage:not([data-mode="scroll"]) .arcade-machine > .ambient,
+.arcade-stage:not([data-mode="scroll"]) .arcade-machine__body {
+  animation: none;
+  translate: none;
+  rotate: none;
+  scale: none;
+  opacity: 1;
+}
+@keyframes arcade-nudge {
+  0%, 100% { rotate: 0deg; }
+  25% { rotate: -1.6deg; }
+  60% { rotate: 1.1deg; }
+}
+
+/* ── Ambient motion (scene assets + the machine) ──
+   --amb-k = strength 0–1, --amb-dur = seconds per cycle, pivot via
+   transform-origin (all set inline by AmbientWrap). */
+.ambient {
+  position: relative;
+}
+.ambient--fill {
+  position: absolute;
+  inset: 0;
+}
+.ambient[data-ambient="sway"] {
+  animation: amb-sway var(--amb-dur, 3s) ease-in-out infinite alternate;
+}
+.ambient[data-ambient="float"] {
+  animation: amb-float var(--amb-dur, 4s) ease-in-out infinite alternate;
+}
+.ambient[data-ambient="pulse"] {
+  animation: amb-pulse var(--amb-dur, 2s) ease-in-out infinite alternate;
+}
+.ambient[data-ambient="flicker"] {
+  animation: amb-flicker var(--amb-dur, 3s) linear infinite;
+}
+@keyframes amb-sway {
+  from { rotate: calc(var(--amb-k, 0.5) * -7deg); }
+  to   { rotate: calc(var(--amb-k, 0.5) * 7deg); }
+}
+@keyframes amb-float {
+  from { translate: 0 0; }
+  to   { translate: 0 calc(var(--amb-k, 0.5) * -6%); }
+}
+@keyframes amb-pulse {
+  from { scale: 1; }
+  to   { scale: calc(1 + var(--amb-k, 0.5) * 0.06); }
+}
+@keyframes amb-flicker {
+  0%, 44%, 50%, 66%, 100% { opacity: 1; }
+  46% { opacity: calc(1 - var(--amb-k, 0.5) * 0.85); }
+  48% { opacity: calc(1 - var(--amb-k, 0.5) * 0.3); }
+  68% { opacity: calc(1 - var(--amb-k, 0.5) * 0.6); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ambient,
+  .arcade-machine__body {
+    animation: none !important;
+  }
+}
+
+/* ── Per-asset positioning + mobile mode ──
+   Position comes from CSS variables so a @container query can swap desktop
+   (--*-d) for mobile (--*-m) values when the section canvas is narrow. Because
+   .drawn-section__canvas is a CSS container (container-type: inline-size), this
+   responds to the CANVAS width — which tracks the viewport on real phones AND
+   the narrow phone view in the editor. One implementation, both surfaces. */
+.drawn-asset-pos {
+  /* Reveal-animation channels (sectionReveal.ts "place"): individual
+     transform properties compose ON TOP of the authored `transform`
+     rotation below, so an entrance tilt never overwrites it. */
+  rotate: var(--rv-rot, 0deg);
+  scale: var(--rv-scale, 1);
+  position: absolute;
+  left: var(--x-d);
+  top: var(--y-d);
+  width: var(--w-d);
+  height: var(--h-d);
+  transform: rotate(var(--rot-d, 0deg));
+}
+@container (max-width: 767px) {
+  .drawn-asset-pos {
+    left: var(--x-m);
+    top: var(--y-m);
+    width: var(--w-m);
+    height: var(--h-m);
+    transform: rotate(var(--rot-m, 0deg));
+  }
+  .drawn-asset-pos[data-hide-mobile="true"] {
+    display: none;
+  }
+}
+@container (min-width: 768px) {
+  .drawn-asset-pos[data-hide-desktop="true"] {
+    display: none;
+  }
+}
+
+/* Whole-section per-device hiding (DrawnSection.hiddenOn), applied by
+   DrawnPageSections on the public site only — the editor dims instead.
+   A media query (not @container) because the page root isn't a container;
+   same 768px breakpoint as the asset rules above. `display: contents` keeps
+   the wrapper out of layout and stacking when the section is shown. */
+.drawn-section-device {
+  display: contents;
+}
+@media (max-width: 767px) {
+  .drawn-section-device[data-hide-mobile="true"] {
+    display: none;
+  }
+}
+@media (min-width: 768px) {
+  .drawn-section-device[data-hide-desktop="true"] {
+    display: none;
+  }
+}
+
+/* Component assets that size their own height — an accordion grows when a row
+   opens, a tab panel's height follows its text. The stored h still defines the
+   authored box (and the editor's resize handles), but at render time the
+   content wins so nothing clips. Doubled class beats the plain `.drawn-asset-pos`
+   height in BOTH the base rule and the mobile container query, since container
+   queries don't add specificity. */
+.drawn-asset-pos.drawn-asset-pos--auto-h {
+  height: auto;
+}
+
+/* Free-placed text (DrawnSection TextAssetInner). Authored in cqw so it
+   scales with the canvas — but on a phone-width canvas that shrinks body
+   text to ~4px. Below the breakpoint the size is floored (--fs-min: 13px
+   body / 22px display) and the text may spill out of its box rather than
+   be clipped: readable-and-slightly-overlapping beats hidden; the author
+   can tidy it in Mobile mode (or turn on auto-stack). */
+.drawn-text {
+  font-size: var(--fs);
+  overflow: hidden;
+}
+@container (max-width: 767px) {
+  .drawn-text {
+    font-size: max(var(--fs), var(--fs-min, 13px));
+    overflow: visible;
+  }
+}
+
+/* Aspect comes from a variable so the auto-stack rule below can override it. */
+.drawn-section__canvas {
+  aspect-ratio: var(--canvas-aspect);
+}
+
+/* ── Auto-stack on mobile ──
+   When a section opts in, its canvas reflows into a centered vertical column on
+   narrow containers instead of the absolute desktop layout — so a desktop
+   design becomes a sensible phone layout with no manual mobile editing. Elements
+   order top-to-bottom by their desktop Y (the inline `order`). The rules target
+   the canvas (a descendant of the .drawn-section__container CSS container) — a
+   container can't query its own size to style itself, hence the wrapper. */
+@container (max-width: 767px) {
+  .drawn-section__container[data-autostack="true"] .drawn-section__canvas {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    aspect-ratio: auto;
+    height: auto;
+    gap: 6cqw;
+    padding: 9cqw 0;
+  }
+  .drawn-section__container[data-autostack="true"] .drawn-asset-pos {
+    position: static;
+    left: auto;
+    top: auto;
+    width: min(calc(var(--w-d) * 2.2), 86%);
+    height: auto;
+    transform: none;
+  }
+  /* Image boxes: the inner next/image is `fill` (absolutely positioned, no
+     intrinsic height), so the flowed box needs its own height — the authored
+     box's pixel aspect (--img-aspect, set inline by DrawnAssetView) — and
+     `position: relative` so the fill image stays inside it. */
+  .drawn-section__container[data-autostack="true"] .drawn-asset-pos.drawn-asset-pos--img {
+    position: relative;
+    aspect-ratio: var(--img-aspect, 1);
+  }
+  .drawn-section__container[data-autostack="true"] .drawn-asset-pos[data-hide-mobile="true"] {
+    display: none;
+  }
+  /* Per-element opt-out ("Free on phones"): back to absolute, at its mobile
+     position and size, floating over the stacked column. Positions are % of
+     the stacked column's box. Listed after the rules above and more specific
+     than all of them. */
+  .drawn-section__container[data-autostack="true"] .drawn-asset-pos[data-free-mobile="true"] {
+    position: absolute;
+    left: var(--x-m);
+    top: var(--y-m);
+    width: var(--w-m);
+    transform: rotate(var(--rot-m, 0deg));
+    aspect-ratio: auto;
+  }
+  .drawn-section__container[data-autostack="true"] .drawn-asset-pos[data-free-mobile="true"]:not(.drawn-asset-pos--auto-h) {
+    height: var(--h-m);
+  }
+}
+
+/* Cursor cues — zoom-in over the cabinet CTA, zoom-out over the close
+   button. Small detail, big premium-feel impact. */
+.cabinet-stage__cta { cursor: zoom-in; }
+.cabinet-stage__close { cursor: zoom-out; }
+/* The game only takes input while playing; in scroll mode clicks fall
+   through to the machine / CTA (→ play). */
+.arcade-stage[data-mode="scroll"] .cabinet-stage__screen {
+  pointer-events: none;
+}
+
+/* Click ripple — a short-lived circle at the exact click point that
+   confirms the gesture before the dolly-in begins. CabinetStage spawns
+   the element via JS at (clientX, clientY); CSS handles the animation. */
+.cabinet-stage__click-ripple {
+  position: fixed;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 70;
+  background: rgba(255, 255, 255, 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 0.6;
+  animation: cabinet-click-ripple 600ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes cabinet-click-ripple {
+  0%   { transform: translate(-50%, -50%) scale(1);  opacity: 0.6; }
+  100% { transform: translate(-50%, -50%) scale(8);  opacity: 0;   }
+}
+
+/* Subtle overshoot on the canvas surface only when the dolly-in lands.
+   The cabinet wrapper shouldn't bounce (cameras don't bounce), but the
+   screen pane briefly nudging "into focus" sells the arrival. */
+@keyframes cabinet-screen-arrive {
+  0%   { transform: scale(1); }
+  60%  { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+.arcade-stage[data-mode="play"] .cabinet-stage__screen {
+  animation: cabinet-screen-arrive 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arcade-stage[data-mode="play"] .cabinet-stage__screen {
+    animation: none;
+  }
+  .cabinet-stage__click-ripple { animation: none; opacity: 0; }
+}
+
+.cabinet-stage__screen {
+  position: absolute;
+  top: var(--screen-top);
+  left: var(--screen-left);
+  width: var(--screen-w);
+  height: var(--screen-h);
+  overflow: hidden;
+  background: #181411; /* warm ink — any transient bar reads intentional */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Phaser consumes raw pointer events on the canvas — the browser must
+     never start a native pan/pinch gesture over it in play mode. */
+  touch-action: none;
+}
+
+/* The fixed-size 1520×960 canvas wrapper inside .cabinet-stage__screen
+   carries the CSS scale variable that fits it to the screen rect. */
+.game-mount-outer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* ── Boot screen ──
+   Shown over the cabinet screen while the game hydrates (catalog fetch +
+   room configs + Phaser boot). It deliberately lives INSIDE the scaled
+   cabinet: styled as the machine's own CRT boot state (scanlines +
+   pulsing power LED), it looks intentional at any zoom level — unlike
+   raw UI text, which just looks broken when scaled. Always mounted;
+   [data-visible] fades it. Swappable for hand-drawn art later. */
+.game-boot-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.035) 0px,
+      rgba(255, 255, 255, 0.035) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    radial-gradient(ellipse at center, #211b16 0%, #14100d 100%);
+  color: var(--paper-3);
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.45s ease;
+}
+/* Author's poster still (Arcade Studio) in place of the CRT boot state. */
+.game-boot-screen[data-poster="true"] {
+  background: #14100d;
+}
+.game-boot-screen__poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.game-boot-screen[data-visible="false"] {
+  opacity: 0;
+}
+.game-boot-screen__led {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 12px 2px color-mix(in srgb, var(--gold) 75%, transparent);
+  animation: boot-led-pulse 1.2s ease-in-out infinite;
+}
+.game-boot-screen__label {
+  font-family: var(--font-geist-mono, ui-monospace, monospace);
+  font-size: 0.85rem;
+  letter-spacing: 0.35em;
+  text-indent: 0.35em; /* re-centre letter-spaced text */
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+@keyframes boot-led-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.35; transform: scale(0.85); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-boot-screen__led { animation: none; }
+}
+
+.cabinet-stage__cta-wrap {
+  position: absolute;
+  top: var(--screen-top);
+  left: var(--screen-left);
+  width: var(--screen-w);
+  height: var(--screen-h);
+  transition: opacity 0.2s ease;
+}
+.arcade-machine__cta-art {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.cabinet-stage__cta-wrap[data-pulse="true"] .arcade-machine__cta-art {
+  animation: cta-pulse 2.4s ease-in-out infinite;
+}
+.cabinet-stage__cta {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+/* Visibility toggles per arcade mode. Elements are always mounted in the
+   DOM; only opacity/pointer-events flip. This avoids React 19
+   concurrent-mode + GSAP mid-tween reconciliation conflicts. The CTA hides
+   any time the arcade isn't in scroll mode. */
+.arcade-stage:not([data-mode="scroll"]) .cabinet-stage__cta-wrap {
+  opacity: 0;
+  pointer-events: none;
+}
+.arcade-stage:not([data-mode="scroll"]) .arcade-machine__cta-art {
+  animation: none;
+}
+
+@keyframes cta-pulse {
+  0%, 100% { opacity: 0.95; transform: translateY(0); }
+  50%      { opacity: 0.7;  transform: translateY(-4px); }
+}
+
+/* ── Game chrome — shared design language ──
+   Every play-mode UI element (HUD buttons, ✕, hint toasts) uses these
+   tokens. All of it is portal'd to document.body and sized in rem —
+   NEVER rendered inside .cabinet-stage, whose transform would multiply
+   it by the zoom scale. Colors come from the theme variables so the
+   hand-drawn restyle later is a palette swap, not a component rewrite. */
+
+/* The built-in buttons are Kenney's "UI Pack" (CC0, files in /public/ui),
+   stretched as nine-slice border images so any label fits. `.kui-btn` is
+   the shared button; the HUD buttons and the corner language toggle use
+   the same look. An author's own art (chrome skins) replaces it. */
+.kui-btn,
+.chrome-btn,
+.language-pill {
+  --kui-img: url("/ui/button-grey.svg");
+  --kui-ink: #3d3f55;
+  /* The face colour of the art, painted underneath it: a button keeps its
+     shape and its label stays readable while the art is still loading. */
+  --kui-face: #dadce7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.75rem;
+  padding: 0 0.3rem;
+  border: solid transparent;
+  border-width: 8px 12px 12px;
+  border-image: var(--kui-img) 12 12 16 12 fill / 9px 9px 12px 9px;
+  background: var(--kui-face);
+  border-radius: 5px; /* keeps the fallback colour inside the art's corners */
+  color: var(--kui-ink);
+  font-family: var(--font-body), var(--font-arabic), sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  transition: transform 0.08s ease, filter 0.12s ease;
+}
+.kui-btn:hover,
+.chrome-btn:hover,
+.language-pill:hover {
+  filter: brightness(1.06);
+}
+.kui-btn:active,
+.chrome-btn:active,
+.language-pill:active {
+  transform: translateY(2px);
+  filter: brightness(0.95);
+}
+.kui-btn:focus-visible,
+.chrome-btn:focus-visible,
+.language-pill:focus-visible {
+  outline: 3px solid var(--accent-brand);
+  outline-offset: 3px;
+}
+.kui-btn:disabled {
+  filter: grayscale(0.6) opacity(0.6);
+  cursor: default;
+}
+/* Tones: the chosen tab, pose or room is blue; the confirming action green. */
+.kui-btn[data-tone="blue"],
+.kui-btn[aria-selected="true"],
+.kui-btn[aria-pressed="true"],
+.kui-btn[aria-current="true"],
+.chrome-btn[aria-expanded="true"] {
+  --kui-img: url("/ui/button-blue.svg");
+  --kui-ink: #ffffff;
+  --kui-face: #1c9fd7;
+}
+.kui-btn[data-tone="green"] {
+  --kui-img: url("/ui/button-green.svg");
+  --kui-ink: #ffffff;
+  --kui-face: #16bb77;
+}
+/* Fetch the pressed-state art up front, so the first press shows it at once. */
+.game-hud,
+.kui-panel {
+  background-image: url("/ui/button-blue.svg"), url("/ui/button-green.svg");
+  background-size: 0 0;
+  background-repeat: no-repeat;
+}
+.kui-btn[data-size="sm"] {
+  min-height: 2.1rem;
+  border-width: 6px 9px 9px;
+  border-image-width: 7px 7px 9px 7px;
+  font-size: 0.78rem;
+  gap: 0.35rem;
+}
+.kui-btn[data-size="lg"] {
+  min-height: 3rem;
+  font-size: 1rem;
+}
+/* A stacked icon-over-label button (the wardrobe tabs). */
+.kui-btn[data-stack] {
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 4rem;
+  padding: 0.15rem 0;
+  font-size: 0.7rem;
+}
+/* A panel that holds buttons (the map list). */
+.kui-panel {
+  border: solid transparent;
+  border-width: 14px;
+  border-image: url("/ui/panel.svg") 12 fill / 9px;
+  background-color: #dadce7;
+  border-radius: 5px;
+  color: #3d3f55;
+}
+
+/* Positioned with logical inset-inline-end so the scroll-mode language
+   toggle flips to the visual left automatically under [dir="rtl"]. */
+.language-pill {
+  top: calc(1rem + env(safe-area-inset-top, 0px));
+  inset-inline-end: calc(1rem + env(safe-area-inset-right, 0px));
+  transition: transform 0.08s ease, filter 0.12s ease, opacity 0.2s ease;
+}
+
+.chrome-toast {
+  position: fixed;
+  z-index: 60;
+  padding: 0.1rem 0.5rem;
+  border: solid transparent;
+  border-width: 9px 12px;
+  border-image: url("/ui/panel.svg") 12 fill / 9px;
+  background-color: #dadce7;
+  border-radius: 5px;
+  color: #3d3f55;
+  font-size: 0.85rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* ✕ close — dark variant of the chrome button, true viewport corner.
+   Lives in CabinetStage's document.body portal ([data-play-ui] wrapper),
+   so position: fixed really is viewport-fixed and the 2.75rem size never
+   scales with the cabinet zoom. Opacity tracks the drain progress. */
+.cabinet-stage__close {
+  position: fixed;
+  top: calc(1rem + env(safe-area-inset-top, 0px));
+  right: calc(1rem + env(safe-area-inset-right, 0px));
+  z-index: 60;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0 0 0.2rem; /* the art's face sits above its depth edge */
+  border: none;
+  background: url("/ui/button-round-red.svg") center / contain no-repeat;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: calc(1 - var(--exit-progress, 0));
+  transition: opacity 0.2s ease, transform 0.08s ease, filter 0.12s ease;
+  touch-action: manipulation;
+}
+.cabinet-stage__close:hover {
+  filter: brightness(1.08);
+}
+.cabinet-stage__close:active {
+  transform: translateY(2px);
+}
+.cabinet-stage__close:focus-visible {
+  outline: 3px solid var(--accent-brand);
+  outline-offset: 3px;
+}
+
+/* Play-mode chrome visibility — flipped by the [data-play-ui] portal
+   wrapper attribute, mirroring the [data-game-hud] pattern. Elements
+   are always mounted; only opacity/pointer-events change. */
+[data-play-ui="off"] .cabinet-stage__close,
+[data-play-ui="off"] .cabinet-stage__exit-hint {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cabinet-stage__exit-hint {
+  bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+}
+.cabinet-stage__exit-hint[data-visible="true"] {
+  animation: hint-fade 3.5s ease-in-out forwards;
+}
+
+/* Hide scroll-mode UI when the page is in play / transitioning state.
+   :not([data-landing-mode="scroll"]) lets the fade-out engage AT THE
+   START of the zoom (during transitioning-in) and stay hidden through
+   transitioning-out, only restoring at the very end. */
+.landing-root:not([data-landing-mode="scroll"]) .language-pill,
+.landing-root:not([data-landing-mode="scroll"]) .landing-footer,
+.landing-root:not([data-landing-mode="scroll"]) .site-header,
+.landing-root:not([data-landing-mode="scroll"]) .site-announcement-bar {
+  opacity: 0;
+  pointer-events: none;
+}
+[data-game-hud="off"] .game-hud,
+[data-game-hud="off"] .game-controls-hint {
+  opacity: 0;
+  pointer-events: none;
+}
+.game-hud,
+.game-controls-hint {
+  transition: opacity 0.2s ease;
+}
+/* Positioning lives here (not in utility classes) so safe-area insets
+   apply on notched phones. The HUD sits inline-start of the ✕. */
+.game-hud {
+  top: calc(1rem + env(safe-area-inset-top, 0px));
+  inset-inline-end: 5rem;
+}
+.game-controls-hint {
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  right: calc(1rem + env(safe-area-inset-right, 0px));
+}
+
+/* Mobile: HUD becomes a thumb-reachable bottom-center pill row; the
+   controls hint sits just above it. `translate` (not transform) is what
+   toast-fade animates, so the centering transform survives. */
+@media (max-width: 1023px) {
+  .game-hud {
+    top: auto;
+    inset-inline-end: auto;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .game-controls-hint {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+    white-space: nowrap;
+  }
+  .chrome-btn {
+    min-height: 2.5rem;
+    font-size: 0.85rem;
+  }
+}
+/* In play mode the HUD fades in lockstep with the exit drain. */
+[data-game-hud="on"] .game-hud {
+  opacity: calc(1 - var(--exit-progress, 0));
+}
+/* Controls hint auto-hides after a few seconds instead of sitting over
+   the game permanently; re-shows on each play entry (attribute flip
+   restarts the animation). */
+[data-game-hud="on"] .game-controls-hint {
+  animation: toast-fade 5s ease-in-out forwards;
+}
+/* Animates `translate` (the standalone property), NOT `transform`, so it
+   composes with the mobile centering transform instead of clobbering it. */
+@keyframes toast-fade {
+  0%   { opacity: 0; translate: 0 8px; }
+  8%   { opacity: 1; translate: 0 0; }
+  85%  { opacity: 1; translate: 0 0; }
+  100% { opacity: 0; translate: 0 0; }
+}
+.language-pill,
+.landing-footer,
+.site-header,
+.site-announcement-bar {
+  transition: opacity 0.2s ease;
+}
+
+@keyframes hint-fade {
+  0%   { opacity: 0; transform: translate(-50%, 10px); }
+  15%  { opacity: 1; transform: translate(-50%, 0); }
+  80%  { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -10px); }
+}
+
+/* ── Section surfaces ──
+   The "material" a section is presented on (paper / digital / plain).
+   SectionSurface.tsx renders one of these as the first child of each
+   .drawn-section, absolutely positioned behind the heading/canvas. Torn
+   edges are CSS masks (not raster assets) so the strip can carry the
+   section's OWN surface color — an <img> can't be recolored per-section,
+   and this is zero network cost. */
+
+.section-surface {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--surface-color, var(--paper-1));
+  /* No overflow:hidden — .section-surface__edge children are DELIBERATELY
+     positioned outside this box (negative top/bottom) so the tear bites
+     into the neighbouring section. Clipping here would hide them. */
+}
+.section-surface[data-kind="digital"] {
+  background: var(--surface-color, var(--digital-bg));
+}
+.section-surface[data-kind="plain"] {
+  background: var(--surface-color, transparent);
+}
+
+/* Pop-up sheet styles live in components/popup/popup.css (imported by
+   PopupModal), next to the components that use them. */
+
+/* ── Paper material ──
+   Shared by the section surface AND its torn-edge strips so the tear is
+   visibly the same sheet. Colour: the author's custom colour, else the
+   preset's base, else the default page paper. Texture layers multiply onto
+   it (opt-out: data-grain="false" → flat colour). */
+.paper-material {
+  background-color: var(--surface-color, var(--paper-base, var(--paper-1)));
+}
+.paper-material[data-grain="true"] {
+  background-image: var(--paper-tex);
+  background-blend-mode: multiply;
+}
+/* Presets (DrawnSection.surface.paper), keyed on [data-paper] — NOT on
+   .paper-material — so the custom properties inherit into children: the
+   torn-edge strips inside a .section-surface pick up the same stock and
+   colour without re-declaring it (a .paper-material default here would
+   reset them to sketchbook). */
+[data-paper="sketchbook"] {
+  --paper-tex: var(--tex-mottle), var(--tex-flecks), var(--tex-tooth-fine);
+}
+[data-paper="coldpress"] {
+  --paper-base: #faf8f2;
+  --paper-tex: var(--tex-mottle), var(--tex-flecks), var(--tex-tooth-cold);
+}
+[data-paper="kraft"] {
+  --paper-base: #c9ae86;
+  --paper-tex: var(--tex-mottle-strong), var(--tex-flecks-dense), var(--tex-fibres),
+    var(--tex-tooth-kraft);
+}
+[data-paper="newsprint"] {
+  --paper-base: #eae6dc;
+  --paper-tex: var(--tex-mottle-strong), var(--tex-flecks), var(--tex-fibres),
+    var(--tex-tooth-news);
+}
+
+/* Digital surface texture variants. */
+.section-surface[data-texture="grid"] {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--digital-ink) 8%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--digital-ink) 8%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+.section-surface[data-texture="scanlines"] {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--digital-ink) 6%, transparent) 0px,
+    color-mix(in srgb, var(--digital-ink) 6%, transparent) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* Torn-paper edges (SectionSurface → TornEdge, geometry in lib/tornEdge.ts).
+   A strip hanging off the section's top (or bottom) edge, 96px
+   tall (96px), holding two clipped layers: a lighter RIM (the torn core where the
+   paper split through its thickness, with loose fibres) and the paper FACE
+   (the same .paper-material as the section, so stock/colour/texture match).
+   The wrapper's drop-shadow is computed from the clipped result, so it
+   follows the torn contour and lifts the sheet off the section it overlaps;
+   on a bottom edge the scaleY(-1) flips the shadow downward with it.
+   Top edges paint over the section above by DOM order; bottom edges need
+   the [data-has-bottom-edge] z-lift below. */
+.section-surface__edge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 96px; /* = TEAR_HEIGHT in lib/tornEdge.ts */
+  pointer-events: none;
+  filter: drop-shadow(0 -1px 1.2px rgb(60 45 25 / 0.28))
+    drop-shadow(0 -2px 5px rgb(60 45 25 / 0.12));
+  /* clip-path applies AFTER filter (overflow:hidden doesn't clip an
+     element's own filter output): without it the blurred shadow of the
+     strip's straight bottom edge smears a faint line across the section
+     where the strip ends. */
+  clip-path: inset(0);
+}
+/* 2px overlap into the section so no hairline gap shows at any zoom. */
+.section-surface__edge--top {
+  top: -94px;
+}
+.section-surface__edge--bottom {
+  bottom: -94px;
+  /* Geometry is generated mirrored (lib/tornEdge.ts flip) rather than
+     CSS-flipped, so the texture stays upright; the shadow falls downward
+     onto the section below. */
+  filter: drop-shadow(0 1px 1.2px rgb(60 45 25 / 0.28))
+    drop-shadow(0 2px 5px rgb(60 45 25 / 0.12));
+}
+.section-surface__edge-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.section-surface__edge-rim,
+.section-surface__edge-face {
+  position: absolute;
+  inset: 0;
+}
+/* Line the face's texture tiles up with the section's own (the strip
+   starts 94px above the section), so there's no seam where they meet. */
+.section-surface__edge-face {
+  background-position: 0 94px;
+}
+/* Bottom strip starts 2px above the section's bottom: shift its tiles by
+   the section height (measured into --surface-h by SectionSurface). */
+.section-surface__edge--bottom .section-surface__edge-face {
+  background-position: 0 calc(-1 * (var(--surface-h, 0px) - 2px));
+}
+.section-surface__edge-rim {
+  /* The torn core: the paper's lighter inside, still fibrous — a faint tooth
+     keeps it from reading as a flat painted outline. */
+  background-color: color-mix(in srgb, var(--surface-color, var(--paper-base, var(--paper-1))) 40%, #fffdf8);
+  background-image: var(--tex-tooth-fine);
+  background-blend-mode: multiply;
+}
+/* A section whose surface draws a BOTTOM tear must lift above the next
+   section in paint order, or the next section's surface (painted later
+   in DOM order) covers it. Top tears need no such lift. */
+.drawn-section[data-has-bottom-edge="true"] {
+  position: relative;
+  z-index: 2;
+}
+
+/* Kraft is dark enough that the default soft ink fails WCAG AA for the
+   subheading (~3.1:1 against its mottled tone); use a deeper soft ink there
+   (≈4.8:1 at the darkest mottle). */
+.drawn-section[data-paper="kraft"] {
+  --section-ink-soft: #3d322a;
+}
+
+/* Heading/subheading color follows the section's surface — dark text on
+   paper/plain, light text on digital. */
+.drawn-section[data-surface="digital"] {
+  --section-on-ink: var(--digital-bg);
+  --section-ink: var(--digital-ink);
+  --section-ink-soft: color-mix(in srgb, var(--digital-ink) 72%, transparent);
+}
+
+/* ── Drawn sections ── */
+
+.drawn-section {
+  /* Slight padding so consecutive sections don't visually fuse.
+     position: relative comes from the "relative" Tailwind utility already
+     on this element in DrawnSection.tsx (needed as .section-surface's
+     containing block). */
+  padding-block: clamp(2rem, 6vw, 5rem);
+}
+
+.drawn-section__canvas img {
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.drawn-asset {
+  display: inline-block;
+}
+
+.drawn-asset--interactive {
+  cursor: pointer;
+}
+
+/* ── Hover effects (swappable) ──
+   `data-hover` = the element's resolved effect (its own override, else the
+   site default from Site settings → Interactions). Applied to link/button
+   elements and the Button block. Everything moves via the INDIVIDUAL
+   translate/rotate/scale properties + filter — never `transform`, which
+   carries each element's authored rotation (the old `transform: scale()`
+   hover flattened any tilted drawing while hovered).
+   Keyboard focus gets the same feedback as hover; touch screens (no hover)
+   get a press state instead; reduced motion keeps only non-moving cues. */
+[data-hover] {
+  transition:
+    translate 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
+    rotate 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
+    scale 0.2s ease,
+    filter 0.28s ease;
+}
+@media (hover: hover) {
+  [data-hover="lift"]:hover,
+  [data-hover="lift"]:focus-visible {
+    translate: 0 -4px;
+    rotate: -0.6deg;
+    filter: drop-shadow(0 10px 12px rgb(60 45 25 / 0.22))
+      drop-shadow(0 2px 3px rgb(60 45 25 / 0.18));
+  }
+  [data-hover="glow"]:hover,
+  [data-hover="glow"]:focus-visible {
+    filter: drop-shadow(0 0 10px rgb(255 186 105 / 0.6)) brightness(1.04);
+  }
+  [data-hover="wobble"]:hover,
+  [data-hover="wobble"]:focus-visible {
+    /* "Line boil": a few held frames of tiny offsets, like redrawn frames
+       in hand-drawn animation — steps(), not a smooth wiggle. */
+    animation: hover-ink-boil 0.42s steps(1) infinite;
+  }
+}
+@keyframes hover-ink-boil {
+  0% { rotate: -1deg; translate: 0.5px 0; }
+  33% { rotate: 0.8deg; translate: -0.5px 0.5px; }
+  66% { rotate: -0.3deg; translate: 0 -0.5px; }
+}
+/* Scribble: a hand-drawn underline that draws itself in reading direction. */
+[data-hover="scribble"]::after {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: -12px;
+  height: 11px;
+  background: var(--section-ink, currentColor);
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20120%2012%27%20preserveAspectRatio%3D%27none%27%3E%3Cpath%20d%3D%27M2%207%20C%2014%202%2C%2022%2011%2C%2034%206%20S%2056%202%2C%2068%207%20S%2092%2011%2C%20104%205%20S%20116%206%2C%20118%207%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%272.2%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E") center / 100% 100% no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20120%2012%27%20preserveAspectRatio%3D%27none%27%3E%3Cpath%20d%3D%27M2%207%20C%2014%202%2C%2022%2011%2C%2034%206%20S%2056%202%2C%2068%207%20S%2092%2011%2C%20104%205%20S%20116%206%2C%20118%207%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%272.2%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E") center / 100% 100% no-repeat;
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 0.45s cubic-bezier(0.3, 0.7, 0.2, 1);
+  pointer-events: none;
+}
+[dir="rtl"] [data-hover="scribble"]::after {
+  clip-path: inset(0 0 0 100%);
+}
+@media (hover: hover) {
+  [data-hover="scribble"]:hover::after,
+  [data-hover="scribble"]:focus-visible::after {
+    clip-path: inset(0 0 0 0);
+  }
+}
+/* Touch: no hover exists, so every effect becomes a short press. */
+@media (hover: none) {
+  [data-hover]:not([data-hover="none"]):active {
+    translate: 0 1px;
+    scale: 0.98;
+  }
+  [data-hover="glow"]:active {
+    filter: drop-shadow(0 0 10px rgb(255 186 105 / 0.6));
+  }
+  [data-hover="scribble"]:active::after {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Reveal targets — start hidden when GSAP wires them, otherwise stay
+   visible (e.g. reduced-motion). */
+.drawn-section.is-revealed {
+  opacity: 1;
+}
+
+.landing-footer {
+  background: transparent;
+}
+
+/* ── Site nav (components/landing/nav/SiteNav.tsx) ──
+   The header is the sticky/relative box; its inner bar slides (hide-on-
+   scroll / after-hero) and a separate background layer carries the colour +
+   blur, so the header itself never gets a transform or filter (either would
+   trap the fixed full-screen menu inside it). A floating nav (transparent
+   over the hero, or appear-after-hero) has zero height: it overlays the page
+   instead of pushing it down. Desktop vs phone bar = container query, so the
+   editor's phone canvas switches like a real phone. */
+.site-nav {
+  --nav-bg: color-mix(in srgb, var(--paper-0) 92%, transparent);
+  --nav-ink: var(--ink-soft);
+  --nav-ink-hover: var(--ink);
+  --nav-panel-bg: var(--paper-0);
+  position: relative;
+  /* Above section content (z-20), below the floating language pill and
+     the play-mode vignette (z-40) — the pill stays usable over the open
+     phone menu too. */
+  z-index: 30;
+  color: var(--nav-ink);
+}
+.site-nav:not([data-scroll="static"]) {
+  position: sticky;
+  top: 0;
+}
+.site-nav[data-float="true"] {
+  height: 0;
+}
+/* The query container is the inner bar, not the header: containment on the
+   header could make it the containing block of the fixed menu panel. */
+.site-nav__inner {
+  position: relative;
+  container: sitenav / inline-size;
+  transition: translate 0.32s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.25s ease, visibility 0.32s;
+}
+.site-nav[data-hidden="true"] .site-nav__inner {
+  translate: 0 -100%;
+  opacity: 0;
+  visibility: hidden;
+}
+.site-nav__bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: var(--nav-bg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transition: opacity 0.3s ease;
+}
+.site-nav[data-divider="true"] .site-nav__bg {
+  border-bottom: 1px solid var(--line);
+}
+/* Transparent over the hero until scrolled past it. */
+.site-nav:not([data-solid="true"]) .site-nav__bg {
+  opacity: 0;
+}
+.site-nav[data-style="drawn"] .site-nav__bg {
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-bottom: 0;
+}
+.site-nav__bg-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Desktop bar */
+.site-nav__desk {
+  position: relative;
+  margin-inline: auto;
+  max-width: var(--nav-max);
+  padding-inline: var(--nav-px);
+}
+.site-nav[data-style="drawn"] .site-nav__desk {
+  padding-inline: 0;
+}
+.site-nav__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  min-height: var(--nav-h);
+}
+.site-nav__row--split {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+}
+.site-nav__row--stacked {
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35rem;
+  padding-block: 0.6rem;
+}
+.site-nav__links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1.5rem;
+}
+.site-nav__links--start { justify-content: flex-start; }
+.site-nav__links--end { justify-content: flex-end; }
+.site-nav__row--stacked .site-nav__links { justify-content: center; }
+.site-nav__logo {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-display-latin), var(--font-arabic), ui-serif, Georgia, serif;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--nav-ink-hover);
+}
+/* The nav's own font (Nav Studio → Look) replaces the display font too. */
+.site-nav[data-own-font="true"] .site-nav__logo,
+.site-nav[data-own-font="true"] .site-nav__panel .site-nav__link {
+  font-family: inherit;
+}
+.site-nav__logo-art {
+  display: block;
+  height: var(--nav-logo-h);
+  width: auto;
+  max-width: 50vw;
+}
+.site-nav__link {
+  position: relative;
+  padding-block: 0.25rem;
+  font-size: var(--nav-link-size);
+  font-weight: 500;
+  color: var(--nav-ink);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.site-nav__link:hover,
+.site-nav__link[data-active="true"] {
+  color: var(--nav-ink-hover);
+}
+.site-nav[data-indicator="underline"] .site-nav__link:not(.site-nav__link--art)::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -2px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  scale: 0 1;
+  transition: scale 0.2s ease;
+}
+.site-nav[data-indicator="underline"] .site-nav__link:hover::after,
+.site-nav[data-indicator="underline"] .site-nav__link[data-active="true"]::after {
+  scale: 1 1;
+}
+.site-nav[data-indicator="pill"] .site-nav__link:not(.site-nav__link--art) {
+  padding: 0.3rem 0.8rem;
+  border-radius: 9999px;
+}
+.site-nav[data-indicator="pill"] .site-nav__link:not(.site-nav__link--art):hover,
+.site-nav[data-indicator="pill"] .site-nav__link:not(.site-nav__link--art)[data-active="true"] {
+  background: color-mix(in srgb, var(--nav-ink-hover) 10%, transparent);
+}
+.site-nav__cta {
+  border-radius: 9999px;
+  padding: 0.45rem 1.1rem;
+  font-size: var(--nav-link-size);
+  font-weight: 600;
+  transition: transform 0.15s ease;
+}
+.site-nav__cta--solid {
+  background: var(--nav-ink-hover);
+  color: var(--paper-0);
+}
+.site-nav__cta--outline {
+  border: 1.5px solid currentColor;
+  color: var(--nav-ink-hover);
+}
+.site-nav__cta:hover { transform: translateY(-1px); }
+.site-nav__cta--art { padding: 0; border-radius: 0; }
+
+/* Art with hover / active swaps (hybrid links + drawn hotspots). */
+.site-nav__art {
+  position: relative;
+  display: inline-grid;
+}
+.site-nav__art > img {
+  grid-area: 1 / 1;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+.site-nav__link-art > img {
+  height: var(--nav-link-art-h);
+  width: auto;
+}
+.site-nav__art-hover,
+.site-nav__art-active {
+  visibility: hidden;
+}
+@media (hover: hover) {
+  a:hover > .site-nav__art .site-nav__art-hover { visibility: visible; }
+  a:hover > .site-nav__art .site-nav__art-base:has(~ .site-nav__art-hover) { visibility: hidden; }
+}
+a[data-active="true"] > .site-nav__art .site-nav__art-active { visibility: visible; }
+a[data-active="true"] > .site-nav__art .site-nav__art-base:has(~ .site-nav__art-active) { visibility: hidden; }
+
+/* Drawn bar: the drawing at full width, hotspots on top. */
+.site-nav__drawn {
+  position: relative;
+  width: 100%;
+}
+.site-nav__drawn-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+.site-nav__hotspot {
+  position: absolute;
+  display: block;
+  border-radius: 6px;
+}
+.site-nav__hotspot:focus-visible {
+  outline: 3px solid var(--accent-brand);
+  outline-offset: 2px;
+}
+.site-nav__hotspot-art {
+  position: absolute;
+  inset: 0;
+}
+.site-nav__hotspot-art > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.site-nav__drawn-lang {
+  position: absolute;
+  inset-inline-end: 12px;
+  top: 50%;
+  translate: 0 -50%;
+}
+
+/* In-nav language switch (the floating pill hides — see .landing-root). */
+.site-nav__lang {
+  padding: 0.3rem 0.8rem;
+  border-radius: 9999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper-0) 70%, transparent);
+  font-size: calc(var(--nav-link-size) - 1px);
+  font-weight: 500;
+  color: var(--nav-ink-hover);
+}
+.site-nav__lang .chrome-slot__img { height: var(--nav-link-art-h); }
+.landing-root[data-nav-lang="all"] .language-pill { display: none; }
+@media (min-width: 768px) {
+  .landing-root[data-nav-lang="desktop"] .language-pill { display: none; }
+}
+@media (max-width: 767px) {
+  .landing-root[data-nav-lang="phone"] .language-pill { display: none; }
+}
+
+/* Phone bar + menu */
+.site-nav__phone {
+  display: none;
+  position: relative;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: min(var(--nav-h), 60px);
+  padding-inline: 16px;
+}
+.site-nav__phone .site-nav__logo-art { height: min(var(--nav-logo-h), 40px); }
+.site-nav__phone-end {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.site-nav__menu-btn,
+.site-nav__close-btn {
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 1.25rem;
+  color: var(--nav-ink-hover);
+}
+.site-nav__btn-art {
+  display: block;
+  height: 40px;
+  width: auto;
+  pointer-events: none;
+}
+.site-nav__burger {
+  display: grid;
+  gap: 5px;
+  width: 22px;
+}
+.site-nav__burger > span {
+  display: block;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: translate 0.2s ease, rotate 0.2s ease, opacity 0.2s ease;
+}
+.site-nav[data-menu-open="true"] .site-nav__burger > span:nth-child(1) { translate: 0 7px; rotate: 45deg; }
+.site-nav[data-menu-open="true"] .site-nav__burger > span:nth-child(2) { opacity: 0; }
+.site-nav[data-menu-open="true"] .site-nav__burger > span:nth-child(3) { translate: 0 -7px; rotate: -45deg; }
+
+@container sitenav (max-width: 767px) {
+  .site-nav__desk { display: none; }
+  .site-nav__phone { display: flex; }
+  .site-nav[data-mobile-hidden="true"] .site-nav__phone,
+  .site-nav[data-mobile-hidden="true"] .site-nav__bg { display: none; }
+}
+/* The menu only opens from the phone bar, so it needs no query of its own. */
+.site-nav__panel {
+  display: flex;
+  flex-direction: column;
+  isolation: isolate;
+  overflow: auto;
+  background: var(--nav-panel-bg);
+  opacity: 0;
+  visibility: hidden;
+  translate: 0 -8px;
+  transition: opacity 0.22s ease, visibility 0.22s, translate 0.22s ease;
+}
+.site-nav__panel[data-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  translate: 0 0;
+}
+.site-nav[data-panel="fullscreen"] .site-nav__panel {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  padding: calc(env(safe-area-inset-top, 0px) + 72px) 28px 40px;
+}
+.site-nav[data-panel="dropdown"] .site-nav__panel {
+  position: absolute;
+  inset-inline: 0;
+  top: 100%;
+  max-height: 75svh;
+  padding: 16px 24px 24px;
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 18px 30px -18px color-mix(in srgb, var(--ink) 35%, transparent);
+}
+/* A floating nav has zero height: drop the menu under its bar instead. */
+.site-nav[data-float="true"][data-panel="dropdown"] .site-nav__panel {
+  top: min(var(--nav-h), 60px);
+}
+.site-nav__panel-art {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.site-nav__close-btn {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  inset-inline-end: 12px;
+}
+.site-nav__panel-links {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.9rem;
+}
+.site-nav__panel .site-nav__link {
+  font-family: var(--font-display-latin), var(--font-arabic), ui-serif, Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+.site-nav[data-panel="dropdown"] .site-nav__panel .site-nav__link {
+  font-size: 1.15rem;
+}
+.site-nav__panel .site-nav__link-art > img {
+  height: calc(var(--nav-link-art-h) * 1.4);
+}
+.site-nav__panel .site-nav__cta {
+  margin-top: 0.75rem;
+  font-size: 1rem;
+}
+
+/* Nav Studio preview: the full-screen menu fills the preview window, not
+   the editor's screen. */
+.site-nav[data-preview="live"][data-panel="fullscreen"] .site-nav__panel {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: var(--nav-preview-h, 480px);
+}
+.site-nav[data-preview="frozen"] .site-nav__inner { pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .site-nav__inner,
+  .site-nav__panel,
+  .site-nav__burger > span { transition: none; }
+}
+
+/* Focus ring — outline-3 utility used by drawn buttons/links and CTA. */
+.focus-visible\:outline-3:focus-visible {
+  outline: 3px solid var(--accent-brand);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* ── UI chrome skins (data/chromeSkin.ts) ──
+   A skinned control trades its pill for the author's image; a custom
+   placement pins it to a screen corner/edge per device. Still viewport-fixed
+   and outside the arcade camera, so it never scales with the zoom. */
+.chrome-slot[data-has-art="true"] {
+  background: transparent !important;
+  border: none !important;
+  border-image: none !important;
+  filter: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.chrome-slot__img {
+  display: block;
+  height: var(--cs-h-d, 44px);
+  width: auto;
+  max-width: 60vw;
+  pointer-events: none;
+  user-select: none;
+}
+.chrome-slot__img--hover {
+  display: none;
+}
+@media (hover: hover) {
+  .chrome-slot:hover .chrome-slot__img--hover {
+    display: block;
+  }
+  .chrome-slot:hover .chrome-slot__img--base:has(+ .chrome-slot__img--hover) {
+    display: none;
+  }
+}
+@media (min-width: 1024px) {
+  .chrome-slot[data-placed-d="true"] {
+    position: fixed !important;
+    inset: var(--cs-t-d) var(--cs-r-d) var(--cs-b-d) var(--cs-l-d) !important;
+    translate: var(--cs-tx-d) 0 !important;
+    transform: none !important;
+  }
+  .chrome-slot[data-hide-d="true"] {
+    display: none !important;
+  }
+}
+@media (max-width: 1023px) {
+  .chrome-slot__img {
+    height: var(--cs-h-m, 40px);
+  }
+  .chrome-slot[data-placed-m="true"] {
+    position: fixed !important;
+    inset: var(--cs-t-m) var(--cs-r-m) var(--cs-b-m) var(--cs-l-m) !important;
+    translate: var(--cs-tx-m) 0 !important;
+    transform: none !important;
+  }
+  .chrome-slot[data-hide-m="true"] {
+    display: none !important;
+  }
+}
+/* In-game controls pulled out of the HUD row follow the HUD's visibility. */
+[data-game-hud="off"] .chrome-slot--hud {
+  opacity: 0;
+  pointer-events: none;
+}
+.chrome-slot--hud {
+  z-index: 60;
+  transition: opacity 0.3s ease;
+}
+
+/* ── Reduced motion ── */
+
+@media (prefers-reduced-motion: reduce) {
+  .arcade-machine__cta-art {
+    animation: none !important;
+  }
+  .cabinet-stage__exit-hint[data-visible="true"] {
+    animation: none;
+    opacity: 1;
+  }
+  [data-game-hud="on"] .game-controls-hint {
+    animation: none;
+    opacity: 1;
+  }
+  .kui-btn,
+  .kui-btn:active,
+  .chrome-btn,
+  .chrome-btn:active,
+  .language-pill,
+  .language-pill:active,
+  .cabinet-stage__close:active {
+    transition: none;
+    transform: none;
+  }
+  /* Reduced motion: no movement — lift keeps its shadow, scribble just
+     appears, wobble does nothing. */
+  [data-hover],
+  [data-hover="scribble"]::after {
+    transition: none;
+  }
+  [data-hover]:hover,
+  [data-hover]:focus-visible,
+  [data-hover]:active {
+    translate: none !important;
+    rotate: none !important;
+    scale: none !important;
+    animation: none !important;
+  }
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+/* ─── Landing editor: selection chrome ─────────────────────────────────
+   Hit boxes are invisible until hovered (an always-on dashed outline on
+   every element read as clutter). The selected element gets Moveable's own
+   control box; the readout is the live x/y, size or angle shown under it
+   during a gesture. */
+.asset-hitbox {
+  outline: 1px solid transparent;
+  outline-offset: -1px;
+  transition: outline-color 120ms ease;
+}
+.asset-hitbox:hover:not([data-selected]) {
+  outline-color: rgb(14 165 233 / 0.75);
+}
+/* Layer lock: a locked element is click-through (pointer-events: none from the
+   component); when it is picked from the layers list it shows a thin outline
+   and a padlock instead of handles. */
+.asset-hitbox[data-locked][data-selected] {
+  outline: 1.5px solid rgb(14 165 233 / 0.9);
+}
+.asset-lock-badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: #0ea5e9;
+  color: #fff;
+  pointer-events: none;
+}
+.asset-readout {
+  position: absolute;
+  z-index: 100000;
+  translate: -50% 0;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #0ea5e9;
+  color: #fff;
+  font: 500 11px/16px ui-sans-serif, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Image placeholder (ImagePlaceholder.tsx): a quiet, paper-toned slot with a
+   crisp hairline dash and a centred icon that scales with the box but stays
+   within sensible bounds. */
+.image-placeholder {
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: color-mix(in oklab, #e9e3d6 88%, #fff);
+  border: 1.5px dashed rgb(43 43 43 / 0.28);
+  color: rgb(43 43 43 / 0.38);
+  container-type: size;
+}
+.image-placeholder svg {
+  width: clamp(18px, 22cqmin, 44px);
+  height: clamp(18px, 22cqmin, 44px);
+}
+
+/* Carousel (CarouselBlock.tsx). Arrows appear on hover/focus on pointer
+   devices (always visible on touch), captions sit on a soft scrim, and dots
+   are small pills where the current one stretches. */
+.carousel-block__arrow {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.88);
+  color: #1f1d1a;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12), 0 4px 14px rgb(0 0 0 / 0.1);
+  backdrop-filter: blur(6px);
+  transition: opacity 180ms ease, background-color 180ms ease, scale 180ms ease;
+}
+.carousel-block__arrow:hover { background: #fff; scale: 1.06; }
+.carousel-block__arrow:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+@media (hover: hover) {
+  .carousel-block__arrow { opacity: 0; }
+  .carousel-block:hover .carousel-block__arrow,
+  .carousel-block__arrow:focus-visible { opacity: 1; }
+}
+.carousel-block__caption {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 28px 16px 12px;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.5), transparent);
+  color: #fff;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  text-align: center;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+}
+.carousel-block__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--section-ink, #2b2b2b) 28%, transparent);
+  transition: width 220ms ease, background-color 220ms ease;
+}
+.carousel-block__dot:hover { background: color-mix(in oklab, var(--section-ink, #2b2b2b) 50%, transparent); }
+.carousel-block__dot[aria-current="true"] {
+  width: 20px;
+  background: var(--section-ink, #2b2b2b);
+}
+/* Fixed-size components (carousel, embed…) in the auto-stacked phone layout:
+   their content fills the box (h-full), so the flowed box keeps the authored
+   pixel aspect, same as image boxes. */
+@container (max-width: 767px) {
+  .drawn-section__container[data-autostack="true"] .drawn-asset-pos.drawn-asset-pos--box:not([data-free-mobile="true"]) {
+    aspect-ratio: var(--img-aspect, 1);
+  }
+}
+
+/* Block empty states (EditorHint.tsx), shown in the editor only. */
+.editor-hint {
+  display: flex;
+  min-height: 5rem;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  border: 1.5px dashed rgb(43 43 43 / 0.25);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.35);
+  color: rgb(43 43 43 / 0.6);
+  font: 500 0.8125rem/1.4 ui-sans-serif, system-ui, sans-serif;
+  text-align: center;
+}
+
+/* Button block (registry.tsx buttonBlock). Colours come from the SECTION
+   (ink on paper, light on digital) so a button reads the same in the editor
+   and on the site. `--btn` is an optional author colour. */
+.block-button {
+  --btn-bg: var(--btn, var(--section-ink));
+  --btn-fg: var(--btn-text, var(--section-on-ink, #faf7f0));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease, translate 160ms ease, scale 160ms ease;
+}
+.block-button[data-size="sm"] { padding: 0.5rem 1.1rem; font-size: 0.8125rem; }
+.block-button[data-size="md"] { padding: 0.75rem 1.6rem; font-size: 0.9375rem; }
+.block-button[data-size="lg"] { padding: 1rem 2.2rem; font-size: 1.0625rem; }
+.block-button[data-variant="solid"] {
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.08), 0 6px 16px -8px rgb(0 0 0 / 0.35);
+}
+.block-button[data-variant="solid"]:hover {
+  background: color-mix(in oklab, var(--btn-bg) 86%, white);
+}
+.block-button[data-variant="outline"] {
+  color: var(--btn, var(--section-ink));
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+.block-button[data-variant="outline"]:hover {
+  background: color-mix(in oklab, var(--btn, var(--section-ink)) 8%, transparent);
+}
+.block-button[data-variant="link"] {
+  padding-inline: 0.1rem;
+  border-radius: 2px;
+  color: var(--btn, var(--section-ink));
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.3em;
+}
+.block-button[data-variant="link"]:hover { text-decoration-thickness: 2.5px; }
+.block-button[data-full="true"] { width: 100%; }
+.block-button__arrow { transition: translate 180ms ease; }
+.block-button:hover .block-button__arrow { translate: 3px 0; }
+[dir="rtl"] .block-button__arrow { rotate: 180deg; }
+[dir="rtl"] .block-button:hover .block-button__arrow { translate: -3px 0; }
+.block-button:focus-visible { outline: 2px solid var(--btn, var(--section-ink)); outline-offset: 3px; }
+/* Spacer block, editor only: faint hatching so an invisible element can be found. */
+.editor-spacer {
+  border-radius: 6px;
+  background: repeating-linear-gradient(135deg, rgb(14 165 233 / 0.1) 0 6px, transparent 6px 12px);
+  outline: 1px dashed rgb(14 165 233 / 0.35);
+  outline-offset: -1px;
+}
+
+/* Accordion block: hairlines above AND below every row (the primitive drops
+   the last one), section ink, calm hover. */
+.accordion-block__item {
+  border-bottom: 1px solid var(--line);
+}
+.accordion-block__item:first-child {
+  border-top: 1px solid var(--line);
+}
+.accordion-block__item:last-child {
+  border-bottom-width: 1px;
+}
+.accordion-block__trigger {
+  padding-block: 1.1rem;
+  color: var(--section-ink);
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+.accordion-block__trigger:hover { text-decoration: none; opacity: 0.8; }
+.accordion-block__trigger > svg { color: var(--section-ink-soft); }
+
+/* Form block inputs: section ink, paper-toned fill, clear focus ring. */
+.form-block__input {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--section-ink) 22%, transparent);
+  background: color-mix(in oklab, #fffdf8 70%, transparent);
+  padding: 0.65rem 0.85rem;
+  font-size: 1rem;
+  color: var(--section-ink);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.form-block__input::placeholder { color: color-mix(in oklab, var(--section-ink-soft) 60%, transparent); }
+.form-block__input:hover { border-color: color-mix(in oklab, var(--section-ink) 40%, transparent); }
+.form-block__input:focus-visible {
+  outline: none;
+  border-color: var(--section-ink);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--section-ink) 14%, transparent);
+}
+.drawn-section[data-surface="digital"] .form-block__input {
+  background: rgb(255 255 255 / 0.06);
+}
+
+/* Section bottom-edge height handle (AssetOverlay) + its drag guide. */
+.canvas-resize-handle {
+  position: absolute;
+  z-index: 100001;
+  left: 50%;
+  bottom: -7px;
+  translate: -50% 0;
+  width: 72px;
+  height: 14px;
+  border-radius: 999px;
+  background: #0ea5e9;
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 0.9), 0 2px 8px rgb(0 0 0 / 0.25);
+  cursor: ns-resize;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  touch-action: none;
+}
+.canvas-resize-handle::before {
+  content: "";
+  position: absolute;
+  inset: 5px 22px;
+  border-block: 1.5px solid rgb(255 255 255 / 0.9);
+}
+.drawn-section__canvas:hover .canvas-resize-handle,
+.canvas-resize-handle:active,
+.canvas-resize-handle:focus-visible { opacity: 1; }
+.canvas-resize-guide {
+  position: absolute;
+  z-index: 100000;
+  left: 0;
+  right: 0;
+  border-top: 2px dashed #0ea5e9;
+  pointer-events: none;
+}
+
+/* Media library tiles: checkerboard so transparent PNG drawings are visible. */
+.media-tile {
+  background-color: #f4f2ee;
+  background-image:
+    linear-gradient(45deg, #e6e2da 25%, transparent 25%),
+    linear-gradient(-45deg, #e6e2da 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e6e2da 75%),
+    linear-gradient(-45deg, transparent 75%, #e6e2da 75%);
+  background-size: 14px 14px;
+  background-position: 0 0, 0 7px, 7px -7px, -7px 0;
+}
+
+/* Floating element toolbar (AssetOverlay ElementToolbar). */
+.element-toolbar {
+  position: absolute;
+  z-index: 100002;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  background: #18181b;
+  color: #f4f4f5;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.28), 0 0 0 1px rgb(255 255 255 / 0.08);
+  font: 500 12px/1 ui-sans-serif, system-ui, sans-serif;
+  white-space: nowrap;
+}
+.element-toolbar__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  min-width: 26px;
+  justify-content: center;
+  padding: 0 7px;
+  border-radius: 6px;
+  color: inherit;
+}
+.element-toolbar__btn:hover { background: rgb(255 255 255 / 0.12); }
+.element-toolbar__btn:focus-visible { outline: 2px solid #0ea5e9; outline-offset: 1px; }
+.element-toolbar__btn--danger:hover { background: rgb(239 68 68 / 0.25); color: #fecaca; }
+.element-toolbar__sep { width: 1px; height: 16px; margin: 0 2px; background: rgb(255 255 255 / 0.15); }
+/* Editor only: the element layer stacks above the section's heading band, so
+   the floating toolbar and handles of a top-row element aren't covered by the
+   heading block (z-20) when they poke up into it. The two don't otherwise
+   overlap (the canvas sits below the heading in flow). */
+[data-editor-canvas] .drawn-section__container {
+  z-index: 25;
+}
+
+/* Form block, inline layout (newsletter): input + button on one row,
+   stacking on narrow widths. */
+.form-block__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+.form-block__row .form-block__input { height: 100%; }
+.form-block__row .block-button { height: 100%; }
+
+/* ─── Builder staples (MoreBlocks.tsx) ─────────────────────────── */
+
+/* Gallery: N columns on desktop, fewer on phones (container query on the
+   section canvas, same breakpoint as everything else). */
+.gallery-block { grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); }
+@container (max-width: 767px) {
+  .gallery-block { grid-template-columns: repeat(var(--mcols, 2), minmax(0, 1fr)); }
+}
+.gallery-block__tile img { transition: scale 400ms cubic-bezier(0.2, 0.7, 0.2, 1), filter 300ms ease; }
+.gallery-block button:hover .gallery-block__tile img { scale: 1.035; }
+.gallery-block[data-muted="true"] .gallery-block__tile img { filter: grayscale(1); opacity: 0.8; }
+.gallery-block[data-muted="true"] li:hover .gallery-block__tile img { filter: none; opacity: 1; }
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 4rem 1rem 3rem;
+  background: rgb(15 13 12 / 0.9);
+  backdrop-filter: blur(4px);
+  animation: lightbox-in 180ms ease-out;
+}
+@keyframes lightbox-in { from { opacity: 0; } }
+.lightbox__img {
+  max-width: min(100%, 1400px);
+  max-height: calc(100svh - 8rem);
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 20px 60px rgb(0 0 0 / 0.5);
+}
+.lightbox__caption {
+  position: absolute;
+  inset: auto 1rem 1rem;
+  color: #eee;
+  text-align: center;
+  font-size: 0.9rem;
+}
+.lightbox__btn {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgb(255 255 255 / 0.1);
+  transition: background-color 150ms ease;
+}
+.lightbox__btn:hover { background: rgb(255 255 255 / 0.2); }
+.lightbox__btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.lightbox__close { top: 1rem; inset-inline-end: 1rem; }
+.lightbox__prev { inset-inline-start: 1rem; top: 50%; translate: 0 -50%; }
+.lightbox__next { inset-inline-end: 1rem; top: 50%; translate: 0 -50%; }
+
+/* Quote / testimonial */
+.quote-block { color: var(--section-ink); }
+.quote-block__mark {
+  display: block;
+  height: 0.55em;
+  font-size: 4.5rem;
+  line-height: 1;
+  color: color-mix(in oklab, var(--section-ink) 30%, transparent);
+}
+.quote-block__text {
+  font-size: clamp(1.25rem, 1rem + 1vw, 1.75rem);
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+.quote-block[data-style="large"] .quote-block__text {
+  font-size: clamp(1.6rem, 1.1rem + 2.2vw, 3rem);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+.quote-block[data-style="large"] .quote-block__mark { font-size: 6.5rem; }
+.quote-block[data-style="card"] {
+  padding: 1.75rem 2rem 1.5rem;
+  border-radius: 14px;
+  background: color-mix(in oklab, #fffdf8 72%, transparent);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 10px 30px -14px rgb(0 0 0 / 0.25);
+}
+.drawn-section[data-surface="digital"] .quote-block[data-style="card"] { background: rgb(255 255 255 / 0.06); }
+.quote-block[data-style="card"] .quote-block__text { font-size: clamp(1.05rem, 0.95rem + 0.5vw, 1.3rem); }
+.quote-block__by {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.1rem;
+}
+.quote-block__avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  object-fit: cover;
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--section-ink) 12%, transparent);
+}
+.quote-block__author { font-weight: 600; font-size: 0.95rem; }
+.quote-block__role { font-size: 0.85rem; color: var(--section-ink-soft); }
+
+/* Feature list */
+.feature-list {
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  gap: 2rem 1.75rem;
+}
+@container (max-width: 767px) {
+  .feature-list { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+}
+.feature-list__icon { display: grid; place-items: center; color: var(--section-ink); }
+.feature-list__icon svg { width: 26px; height: 26px; }
+.feature-list__icon[data-style="circle"] {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--section-ink) 7%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--section-ink) 12%, transparent);
+}
+.feature-list__title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--section-ink);
+}
+
+/* ─── Room / World editor: visible keyboard focus ───────────────────
+   Mouse clicks don't show rings (:focus-visible); keyboard users always
+   see where they are. Scoped to the editor shells (.editor-root). */
+.editor-root :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .editor-root *,
+  .editor-root *::before,
+  .editor-root *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* ── Admin touch mode ─────────────────────────────────────────
+   html[data-touch] is set only on /admin pages whose primary input is a
+   finger (src/lib/touchMode.ts), so none of this reaches the public site or a
+   desktop with a mouse. Instead of restyling ~200 controls one by one, this
+   layer pads every interactive target to 44×44 px and lifts small text to
+   13 px. The landing canvas ([data-editor-canvas]) renders the real public
+   page and must stay WYSIWYG, so it (and any [data-touch-exempt] subtree) is
+   left alone; its own editor chrome gets explicit rules further down. */
+html[data-touch] body {
+  /* No double-tap page zoom (and no 300 ms tap delay) on editor chrome. */
+  touch-action: manipulation;
+}
+/* Admin on a finger / Pencil: no rubber-band, no pull-to-refresh, and nothing
+   on a drawing surface is selectable or shows the iOS long-press callout
+   (image "Save / Copy" sheet, text selection magnifier). Inputs and text areas
+   keep selection so typing, Scribble and paste work. */
+html[data-touch],
+html[data-touch] body {
+  overscroll-behavior: none;
+}
+html[data-touch] :is(canvas, .konvajs-content, img, svg, .asset-hitbox, [data-editor-canvas], [data-studio-modal]) {
+  -webkit-touch-callout: none;
+}
+html[data-touch] :is(canvas, .konvajs-content, .asset-hitbox, .moveable-control-box, [data-studio-modal]):not(:is(input, textarea, [contenteditable="true"])) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+html[data-touch] :is(input, textarea, [contenteditable="true"]) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+html[data-touch] :is(button, [role="button"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="tab"], [role="option"], summary, select):not([role="switch"], [role="checkbox"], [role="radio"], [role="slider"], [data-touch-exempt], [data-touch-exempt] *, [data-editor-canvas] *) {
+  min-height: 44px;
+  min-width: 44px;
+  /* A long-press peeks at the label (TouchModeRoot), never selects text or
+     opens the iOS callout. */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* Toggles keep their drawn size; an invisible ring makes the target 44 px. */
+html[data-touch] :is([role="switch"], [role="checkbox"]):not(.absolute, .fixed, [data-editor-canvas] *) {
+  position: relative;
+}
+html[data-touch] :is([role="switch"], [role="checkbox"]):not([data-editor-canvas] *)::after {
+  content: "";
+  position: absolute;
+  /* Mostly vertical: sideways growth would give panels horizontal scrollbars. */
+  inset: -12px -4px;
+}
+html[data-touch] :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="hidden"]), select, textarea):not([data-touch-exempt] *, [data-editor-canvas] *) {
+  /* 16 px stops iOS Safari zooming the whole page when a field is focused. */
+  font-size: 16px;
+  /* …which also widens a field's intrinsic size; let flex rows shrink it. */
+  min-width: 0;
+}
+html[data-touch] :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="hidden"]), select):not([data-touch-exempt] *, [data-editor-canvas] *) {
+  min-height: 44px;
+}
+html[data-touch] input:is([type="checkbox"], [type="radio"]):not([data-editor-canvas] *) {
+  width: 22px;
+  height: 22px;
+}
+html[data-touch] input[type="color"]:not([data-editor-canvas] *) {
+  min-width: 44px;
+  min-height: 44px;
+}
+html[data-touch] :is(.text-\[9px\], .text-\[10px\], .text-\[11px\], .text-\[12px\], .text-xs):not([data-touch-exempt], [data-touch-exempt] *, [data-editor-canvas] *) {
+  font-size: 13px;
+}
+/* A finger on the selected element's drag area or a handle moves / resizes it:
+   the browser must not scroll or zoom under it. (Unselected elements keep
+   native scrolling: their hit boxes say pan-x pan-y.) */
+html[data-touch] .moveable-control-box,
+html[data-touch] .moveable-control-box * {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* react-moveable handles (landing canvas, arcade frames/machine): 28 px dots
+   with an extra invisible margin (controlPadding is set in the overlays). */
+html[data-touch] .moveable-control-box .moveable-control {
+  width: 28px !important;
+  height: 28px !important;
+  margin-top: -14px !important;
+  margin-left: -14px !important;
+  border-width: 3px !important;
+}
+html[data-touch] .moveable-control-box .moveable-line.moveable-rotation-line .moveable-control {
+  width: 32px !important;
+  height: 32px !important;
+  margin-top: -16px !important;
+  margin-left: -16px !important;
+}
+/* Landing canvas chrome that lives inside [data-editor-canvas]. */
+html[data-touch] .element-toolbar {
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+html[data-touch] .element-toolbar__btn {
+  height: 44px;
+  min-width: 44px;
+  padding: 0 10px;
+  border-radius: 9px;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+html[data-touch] .element-toolbar__btn svg {
+  width: 18px;
+  height: 18px;
+}
+html[data-touch] .element-toolbar__sep {
+  height: 24px;
+}
+/* The section-height handle only appears on hover with a mouse; on touch it is
+   always shown (it only renders for the active section) and finger-sized. */
+html[data-touch] [data-editor-section]:not([data-active]) .canvas-resize-handle {
+  display: none;
+}
+html[data-touch] .canvas-resize-handle {
+  opacity: 1;
+  width: 96px;
+  height: 22px;
+  bottom: -11px;
+  touch-action: none;
+}
+html[data-touch] .canvas-resize-handle::before {
+  inset: 7px 30px;
+}
+html[data-touch] .canvas-resize-handle::after {
+  content: "";
+  position: absolute;
+  inset: -12px -8px;
+}
+/* Modals on touch screens: never taller than the visible area, scrolling
+   inside instead of off the bottom of Safari. Radix/shadcn dialogs centre in
+   the VISUAL viewport, so they stay above the on-screen keyboard; while the
+   keyboard is up (TouchModeRoot sets data-keyboard) the full-screen overlays
+   of the hand-rolled modals shrink to the visible area too. */
+html[data-touch] [data-slot="dialog-content"] {
+  top: calc(var(--app-vv-top, 0px) + var(--app-vvh, 100dvh) / 2);
+  max-height: calc(var(--app-vvh, 100dvh) - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+html[data-touch][data-keyboard] .fixed.inset-0 {
+  top: var(--app-vv-top, 0px);
+  bottom: auto;
+  height: var(--app-vvh, 100dvh);
+}
+html[data-touch][data-keyboard] .fixed.inset-0 > :not(.absolute, .fixed) {
+  max-height: 100%;
+}

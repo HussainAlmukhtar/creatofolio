@@ -1,0 +1,4 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+# Klecks patches must keep LF: they are applied to LF source files on every platform.
+app/scripts/klecks-patches/*.patch -text eol=lf

@@ -1,0 +1,632 @@
+/* Loading screen (SiteLoader). Everything moves in pure CSS so it animates
+   before the page hydrates. Sizes use container units (the loader is its own
+   size container), so the editor's preview box scales like a real screen.
+   Speed: every duration is divided by --loader-speed. */
+
+@property --ld-hole {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
+html.site-loading {
+  overflow: hidden;
+  /* Keep the scrollbar's room while it is hidden (Windows): the page behind
+     doesn't jump sideways the moment the screen leaves. */
+  scrollbar-gutter: stable;
+}
+html[data-loader-skip] .site-loader:not([data-preview]) {
+  display: none;
+}
+
+.site-loader {
+  --loader-ink: var(--ink, #2b2420);
+  --ld-dir: 1;
+  --ld-art: calc(min(40cqmin, 300px) * var(--loader-size, 1));
+  --ld-ribbon: #b5473a;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  container-type: size;
+  perspective: 2400px;
+  color: var(--loader-ink);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.site-loader[data-preview] {
+  position: absolute;
+  z-index: 1;
+  /* The editor's preset cards sit in a scrolling column: a finger dragging
+     across one must still scroll it on an iPad. */
+  touch-action: auto;
+}
+.site-loader[data-state="leaving"] {
+  pointer-events: none;
+}
+.site-loader[data-lang="ar"],
+html[data-loader-lang="ar"] .site-loader:not([data-preview]) {
+  --ld-dir: -1;
+}
+
+/* Never stuck: if the script never finishes (it always should), the screen
+   gets out of the way on its own. */
+.site-loader:not([data-preview])[data-state="loading"] {
+  animation: ld-failsafe 0.4s 15s forwards;
+}
+@keyframes ld-failsafe {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* Caption language: the live screen carries both, the boot script picks. */
+.site-loader:not([data-preview]) [data-caption="ar"] {
+  display: none;
+}
+html[data-loader-lang="ar"] .site-loader:not([data-preview]) [data-caption="en"] {
+  display: none;
+}
+html[data-loader-lang="ar"] .site-loader:not([data-preview]) [data-caption="ar"] {
+  display: block;
+}
+
+.site-loader .ld-sheet {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  backface-visibility: hidden;
+  transform-origin: calc(50% - 50% * var(--ld-dir)) 50%;
+}
+.site-loader .ld-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(10px, 2.6cqmin, 22px);
+  padding: 24px 16px;
+  text-align: center;
+}
+.site-loader .ld-caption {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(15px, 3.4cqmin, 26px);
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  color: var(--loader-ink);
+  max-width: min(32ch, 90cqw);
+}
+.site-loader .ld-box {
+  position: relative;
+  width: var(--ld-art);
+  height: var(--ld-art);
+  display: grid;
+  place-items: center;
+}
+.site-loader .ld-box > *,
+.site-loader .ld-img,
+.site-loader .ld-ph {
+  width: 100%;
+  height: 100%;
+}
+.site-loader .ld-img {
+  object-fit: contain;
+  pointer-events: none;
+}
+.site-loader .ld-ph .ld-fill {
+  fill: color-mix(in srgb, #fff 62%, transparent);
+}
+
+/* ── Spinner ─────────────────────────────────────────── */
+.site-loader .ld-spin {
+  animation: ld-spin calc(1.9s / var(--loader-speed, 1)) linear infinite;
+}
+@keyframes ld-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Hop ─────────────────────────────────────────────── */
+.site-loader .ld-hop-box {
+  place-items: end center;
+}
+.site-loader .ld-hop {
+  width: 80%;
+  height: 80%;
+  margin-bottom: 7%;
+  transform-origin: 50% 100%;
+  animation: ld-hop calc(0.95s / var(--loader-speed, 1)) infinite;
+}
+.site-loader .ld-shadow {
+  position: absolute;
+  bottom: 3%;
+  left: 27%;
+  width: 46%;
+  height: 7%;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.16;
+  animation: ld-shadow calc(0.95s / var(--loader-speed, 1)) infinite;
+}
+@keyframes ld-hop {
+  0% {
+    transform: translateY(0) scale(1.12, 0.86);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+  14% {
+    transform: translateY(-4%) scale(0.92, 1.1);
+    animation-timing-function: cubic-bezier(0.25, 0.6, 0.45, 1);
+  }
+  48% {
+    transform: translateY(-30%) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.45);
+  }
+  84% {
+    transform: translateY(0) scale(0.96, 1.05);
+    animation-timing-function: ease-out;
+  }
+  100% {
+    transform: translateY(0) scale(1.12, 0.86);
+  }
+}
+@keyframes ld-shadow {
+  0%,
+  100% {
+    transform: scaleX(1.1);
+    opacity: 0.2;
+  }
+  48% {
+    transform: scaleX(0.6);
+    opacity: 0.08;
+  }
+}
+
+/* ── Being drawn ─────────────────────────────────────── */
+.site-loader .ld-reveal {
+  animation: ld-reveal calc(3.4s / var(--loader-speed, 1)) linear infinite;
+}
+@keyframes ld-reveal {
+  0% {
+    clip-path: inset(0 100% 0 0);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.45, 0.05, 0.4, 1);
+  }
+  55%,
+  82% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+  94%,
+  100% {
+    clip-path: inset(0 0 0 0);
+    opacity: 0;
+  }
+}
+.site-loader .ld-stroke {
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+}
+.site-loader .ld-s1 {
+  animation: ld-draw1 calc(3.4s / var(--loader-speed, 1)) linear infinite;
+}
+.site-loader .ld-s2 {
+  animation: ld-draw2 calc(3.4s / var(--loader-speed, 1)) linear infinite;
+}
+.site-loader .ld-face {
+  animation: ld-face calc(3.4s / var(--loader-speed, 1)) linear infinite;
+}
+@keyframes ld-draw1 {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.45, 0.05, 0.4, 1);
+  }
+  42%,
+  82% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  94%,
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+@keyframes ld-draw2 {
+  0%,
+  40% {
+    stroke-dashoffset: 1;
+    opacity: 1;
+  }
+  52%,
+  82% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  94%,
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+@keyframes ld-face {
+  0%,
+  52% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  58%,
+  82% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  94%,
+  100% {
+    opacity: 0;
+  }
+}
+.site-loader .ld-face {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* ── Flipbook (6 frames a second at speed 1) ─────────── */
+.site-loader .ld-flip {
+  --ld-n: 4;
+  --ld-frame: calc(0.17s / var(--loader-speed, 1));
+}
+.site-loader .ld-flip[data-frames="1"] { --ld-n: 1; }
+.site-loader .ld-flip[data-frames="2"] { --ld-n: 2; }
+.site-loader .ld-flip[data-frames="3"] { --ld-n: 3; }
+.site-loader .ld-frame {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: ld-flip-4 calc(var(--ld-n) * var(--ld-frame)) step-end infinite;
+  animation-delay: calc(var(--i) * var(--ld-frame));
+}
+.site-loader .ld-flip[data-frames="1"] .ld-frame { animation: none; opacity: 1; }
+.site-loader .ld-flip[data-frames="2"] .ld-frame { animation-name: ld-flip-2; }
+.site-loader .ld-flip[data-frames="3"] .ld-frame { animation-name: ld-flip-3; }
+/* The first frame shows before its animation ticks. */
+.site-loader .ld-frame:first-child { opacity: 1; }
+@keyframes ld-flip-2 { 0% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes ld-flip-3 { 0% { opacity: 1; } 33.333%, 100% { opacity: 0; } }
+@keyframes ld-flip-4 { 0% { opacity: 1; } 25%, 100% { opacity: 0; } }
+
+/* ── Orbit ───────────────────────────────────────────── */
+.site-loader .ld-orbit-box {
+  width: calc(var(--ld-art) * 1.3);
+  height: calc(var(--ld-art) * 1.3);
+}
+.site-loader .ld-orbit-box > .ld-orbit-centre {
+  width: 58%;
+  height: 58%;
+  animation: ld-bob calc(2.4s / var(--loader-speed, 1)) ease-in-out infinite;
+}
+.site-loader .ld-orbit {
+  position: absolute;
+  inset: 0;
+  animation: ld-spin calc(7s / var(--loader-speed, 1)) linear infinite;
+}
+.site-loader .ld-orbiter {
+  --a: calc(var(--i) * 120deg);
+  position: absolute;
+  left: 39%;
+  top: 39%;
+  width: 22%;
+  height: 22%;
+  transform: rotate(var(--a)) translateY(calc(var(--ld-art) * -0.5));
+}
+.site-loader .ld-orbiter-art {
+  width: 100%;
+  height: 100%;
+  transform: rotate(calc(var(--a) * -1));
+}
+.site-loader .ld-orbiter-art > * {
+  width: 100%;
+  height: 100%;
+  animation: ld-spin calc(7s / var(--loader-speed, 1)) linear infinite reverse;
+}
+@keyframes ld-bob {
+  0%,
+  100% {
+    transform: translateY(-3%) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(3%) rotate(2deg);
+  }
+}
+
+/* ── The book ───────────────────────────────────────── */
+.site-loader .ld-book-box {
+  width: calc(var(--ld-art) * 0.78);
+  height: calc(var(--ld-art) * 1.04);
+  /* Room for the ribbon hanging below the book. */
+  margin-bottom: calc(var(--ld-art) * 0.12);
+}
+.site-loader[data-bare] .ld-book-box {
+  margin-bottom: 0;
+}
+.site-loader .ld-book {
+  position: relative;
+  perspective: 1600px;
+  transform-style: preserve-3d;
+  animation: ld-float calc(3s / var(--loader-speed, 1)) ease-in-out infinite;
+}
+.site-loader .ld-book-pages {
+  position: absolute;
+  inset: 1.5% calc(-3% * var(--ld-dir)) 1.5% calc(3% * var(--ld-dir));
+}
+.site-loader .ld-pages-svg {
+  width: 100%;
+  height: 100%;
+}
+.site-loader .ld-page-fill {
+  fill: color-mix(in srgb, #fff 78%, transparent);
+}
+.site-loader .ld-book-cover {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform-origin: calc(50% - 50% * var(--ld-dir)) 50%;
+  animation: ld-peek calc(3s / var(--loader-speed, 1)) ease-in-out infinite;
+}
+.site-loader .ld-book-cover > * {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+/* The placeholder's spine follows the hinge (right-hand side in Arabic). */
+.site-loader .ld-book-cover > svg.ld-ph {
+  transform: scaleX(var(--ld-dir));
+}
+/* The cover's inside (seen once it swings past edge-on). */
+.site-loader .ld-book-cover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--loader-ink) 8%, #f6f1e6);
+  border: 2px solid color-mix(in srgb, var(--loader-ink) 50%, transparent);
+  transform: rotateY(180deg);
+  backface-visibility: hidden;
+}
+.site-loader .ld-cover-fill {
+  fill: color-mix(in srgb, var(--loader-ink) 10%, #efe4cf);
+}
+.site-loader .ld-label-fill {
+  fill: color-mix(in srgb, #fff 75%, transparent);
+}
+.site-loader .ld-ribbon {
+  position: absolute;
+  bottom: -10%;
+  left: calc(50% + 14% * var(--ld-dir));
+  width: 6%;
+  height: 15%;
+  background: var(--ld-ribbon);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
+  transform-origin: 50% 0;
+  animation: ld-sway calc(2.2s / var(--loader-speed, 1)) ease-in-out infinite;
+}
+@keyframes ld-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1.5deg);
+  }
+  50% {
+    transform: translateY(-4%) rotate(1.5deg);
+  }
+}
+@keyframes ld-peek {
+  0%,
+  55%,
+  100% {
+    transform: rotateY(0deg);
+  }
+  70% {
+    transform: rotateY(calc(-26deg * var(--ld-dir)));
+  }
+  82% {
+    transform: rotateY(calc(-6deg * var(--ld-dir)));
+  }
+}
+@keyframes ld-sway {
+  0%,
+  100% {
+    transform: rotate(5deg);
+  }
+  50% {
+    transform: rotate(-5deg);
+  }
+}
+/* Leaving: the cover swings open first, then the screen exits. */
+.site-loader[data-preset="book"][data-state="leaving"] .ld-book {
+  animation: ld-book-zoom 0.55s cubic-bezier(0.5, 0, 0.3, 1) forwards;
+}
+.site-loader[data-preset="book"][data-state="leaving"] .ld-book-cover {
+  animation: ld-cover-open 0.55s cubic-bezier(0.5, 0, 0.3, 1) forwards;
+}
+@keyframes ld-book-zoom {
+  to {
+    transform: scale(1.12);
+  }
+}
+@keyframes ld-cover-open {
+  to {
+    transform: rotateY(calc(-165deg * var(--ld-dir)));
+  }
+}
+
+/* ── Progress ────────────────────────────────────────── */
+.site-loader .ld-line {
+  width: min(58cqw, 240px);
+  height: auto;
+  overflow: visible;
+}
+.site-loader .ld-line-ink {
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+  /* Before JavaScript takes over: creep along so it never looks stuck. */
+  animation: ld-creep 6s cubic-bezier(0.1, 0.6, 0.3, 1) forwards;
+}
+.site-loader[data-js] .ld-line-ink {
+  animation: none;
+}
+.site-loader[data-js]:not([data-preview]) .ld-line-ink {
+  transition: stroke-dashoffset 0.12s linear;
+}
+@keyframes ld-creep {
+  to {
+    stroke-dashoffset: 0.35;
+  }
+}
+.site-loader .ld-pct {
+  font-family: var(--font-display);
+  font-size: clamp(13px, 2.6cqmin, 18px);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+.site-loader .ld-dots {
+  display: flex;
+  gap: 8px;
+  height: 18px;
+  align-items: end;
+}
+.site-loader .ld-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: ld-dot calc(1s / var(--loader-speed, 1)) ease-in-out infinite;
+}
+.site-loader .ld-dots span:nth-child(2) { animation-delay: calc(0.15s / var(--loader-speed, 1)); }
+.site-loader .ld-dots span:nth-child(3) { animation-delay: calc(0.3s / var(--loader-speed, 1)); }
+@keyframes ld-dot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-9px);
+    opacity: 1;
+  }
+}
+
+/* ── Exits (on the sheet, after the book cover if any) ─ */
+.site-loader[data-state="leaving"] .ld-sheet {
+  animation-delay: var(--loader-exit-delay, 0ms);
+  animation-fill-mode: forwards;
+}
+.site-loader[data-exit="fade"][data-state="leaving"] .ld-sheet {
+  animation-name: ld-exit-fade;
+  animation-duration: 0.65s;
+  animation-timing-function: ease;
+}
+.site-loader[data-exit="curtain"][data-state="leaving"] .ld-sheet {
+  animation-name: ld-exit-curtain;
+  animation-duration: 0.9s;
+  animation-timing-function: cubic-bezier(0.7, 0, 0.2, 1);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.22);
+}
+.site-loader[data-exit="book"][data-state="leaving"] .ld-sheet {
+  animation-name: ld-exit-book;
+  animation-duration: 1.15s;
+  animation-timing-function: cubic-bezier(0.55, 0, 0.25, 1);
+}
+.site-loader[data-exit="iris"][data-state="leaving"] .ld-sheet {
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent var(--ld-hole), #000 calc(var(--ld-hole) + 0.5%));
+  mask-image: radial-gradient(circle at 50% 50%, transparent var(--ld-hole), #000 calc(var(--ld-hole) + 0.5%));
+  animation-name: ld-exit-iris;
+  animation-duration: 0.95s;
+  animation-timing-function: cubic-bezier(0.6, 0, 0.3, 1);
+}
+.site-loader[data-exit="iris"][data-state="leaving"] .ld-center {
+  animation: ld-exit-fade 0.4s ease forwards;
+  animation-delay: var(--loader-exit-delay, 0ms);
+}
+@keyframes ld-exit-fade {
+  to {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+@keyframes ld-exit-curtain {
+  to {
+    transform: translateY(-104%);
+  }
+}
+@keyframes ld-exit-book {
+  0% {
+    transform: rotateY(0);
+    box-shadow: 0 0 0 rgb(0 0 0 / 0);
+  }
+  30% {
+    box-shadow: 0 0 60px rgb(0 0 0 / 0.25);
+  }
+  100% {
+    transform: rotateY(calc(-96deg * var(--ld-dir)));
+    box-shadow: 0 0 60px rgb(0 0 0 / 0.1);
+  }
+}
+@keyframes ld-exit-iris {
+  85% {
+    opacity: 1;
+  }
+  to {
+    --ld-hole: 110%;
+    opacity: 0;
+  }
+}
+
+/* ── Reduced motion: a slow breath, and a plain fade out ─ */
+@media (prefers-reduced-motion: reduce) {
+  .site-loader .ld-spin,
+  .site-loader .ld-hop,
+  .site-loader .ld-reveal,
+  .site-loader .ld-orbit-centre,
+  .site-loader .ld-book,
+  .site-loader .ld-flip {
+    animation: ld-breathe 2.6s ease-in-out infinite !important;
+  }
+  .site-loader .ld-shadow,
+  .site-loader .ld-orbit,
+  .site-loader .ld-orbiter-art > *,
+  .site-loader .ld-book-cover,
+  .site-loader .ld-ribbon,
+  .site-loader .ld-dots span,
+  .site-loader .ld-s1,
+  .site-loader .ld-s2,
+  .site-loader .ld-face {
+    animation: none !important;
+  }
+  .site-loader .ld-stroke {
+    stroke-dashoffset: 0;
+  }
+  .site-loader .ld-frame {
+    animation: none !important;
+  }
+  .site-loader .ld-reveal {
+    clip-path: none;
+  }
+  .site-loader[data-state="leaving"] .ld-sheet,
+  .site-loader[data-state="leaving"] .ld-center {
+    animation: ld-exit-fade 0.5s ease forwards !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+}
+@keyframes ld-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}

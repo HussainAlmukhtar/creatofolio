@@ -1,0 +1,31 @@
+# Repo-root ignores (the app is under app/; see app/.gitignore for
+# Next.js / build outputs).
+
+# Klecks source checkout: cloned at a pinned commit by
+# app/scripts/build-klecks.mjs, never committed here.
+/klecks/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Environment files and local credentials: never commit
+.env
+.env.*
+!.env.example
+*.pem
+
+# Supabase CLI state (holds the linked project ref and pooler URL)
+supabase/.temp/
+supabase/.branches/
+
+# Local database exports
+/backups/
+
+# Local tool settings (CLAUDE.md at the root is kept; this folder is per-machine)
+.claude/
+.wrangler
+.dev.vars*

@@ -1,0 +1,112 @@
+/* Pop-up style editor (components/popup-styles): slice guides, the frame's
+   screen box, the dialogue sample and "Show basic shapes". Editor-only. */
+
+/* ── Nine-slice guide lines (SliceEditor) ── */
+.slice-line {
+  position: absolute;
+  z-index: 1;
+  touch-action: none;
+  background: none;
+}
+.slice-line--h { cursor: ns-resize; margin-top: -9px; height: 18px !important; }
+.slice-line--v { cursor: ew-resize; margin-left: -9px; width: 18px !important; }
+.slice-line--h[style*="bottom"] { margin-top: 0; margin-bottom: -9px; }
+.slice-line--v[style*="right"] { margin-left: 0; margin-right: -9px; }
+.slice-line::before {
+  content: "";
+  position: absolute;
+  background: rgb(239 68 68 / 0.9);
+}
+.slice-line--h::before { left: 0; right: 0; top: 8px; height: 2px; }
+.slice-line--v::before { top: 0; bottom: 0; left: 8px; width: 2px; }
+.slice-line__grip {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgb(239 68 68);
+  box-shadow: 0 0 0 2px white;
+}
+.slice-line--h .slice-line__grip { left: 50%; top: 2px; transform: translateX(-50%); }
+.slice-line--v .slice-line__grip { top: 50%; left: 2px; transform: translateY(-50%); }
+.slice-line:focus-visible { outline: 2px solid rgb(96 165 250); }
+[data-touch] .slice-line--h { margin-top: -22px; height: 44px !important; }
+[data-touch] .slice-line--h::before { top: 21px; }
+[data-touch] .slice-line--h .slice-line__grip { top: 15px; }
+[data-touch] .slice-line--v { margin-left: -22px; width: 44px !important; }
+[data-touch] .slice-line--v::before { left: 21px; }
+[data-touch] .slice-line--v .slice-line__grip { left: 15px; }
+
+/* ── Frame screen box (ScreenEditor) ── */
+.screen-rect {
+  position: absolute;
+  cursor: move;
+  touch-action: none;
+  border: 2px dashed rgb(239 68 68);
+  background: rgb(239 68 68 / 0.12);
+}
+.screen-rect:focus-visible { outline: 2px solid rgb(96 165 250); outline-offset: 2px; }
+.screen-rect__label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgb(239 68 68);
+  pointer-events: none;
+}
+.screen-rect__handle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: rgb(239 68 68);
+  box-shadow: 0 0 0 2px white;
+  touch-action: none;
+}
+[data-touch] .screen-rect__handle { width: 28px; height: 28px; }
+.screen-rect__handle--nw { left: 0; top: 0; transform: translate(-50%, -50%); cursor: nwse-resize; }
+.screen-rect__handle--ne { right: 0; top: 0; transform: translate(50%, -50%); cursor: nesw-resize; }
+.screen-rect__handle--sw { left: 0; bottom: 0; transform: translate(-50%, 50%); cursor: nesw-resize; }
+.screen-rect__handle--se { right: 0; bottom: 0; transform: translate(50%, 50%); cursor: nwse-resize; }
+
+/* ── Dialogue box sample (StylePreview) ── */
+/* The dialogue sample: the real box (a still preview) at the bottom of the frame. */
+.dialogue-sample { position: absolute; inset-inline: 4%; bottom: 5%; }
+.dialogue-sample .dialogue__next { animation: none; }
+
+/* ── "Show basic shapes": faint outlines naming each drawable part ── */
+[data-shapes] :is(.popup-surface, .popup-frame__screen, .popup-sheet__close, .popup-sheet__title, .popup-pages__arrow, .popup-pages__corner, .dialogue__box, .dialogue__name, .dialogue__choice, .dialogue__next) {
+  outline: 1.5px dashed rgb(37 99 235 / 0.75);
+  outline-offset: 2px;
+}
+[data-shapes] :is(.popup-surface, .popup-frame__screen, .popup-sheet__close, .popup-sheet__title, .popup-pages__arrow, .dialogue__box) {
+  position: relative;
+}
+[data-shapes] .popup-surface::after,
+[data-shapes] .popup-frame__screen::after,
+[data-shapes] .popup-sheet__close::after,
+[data-shapes] .popup-sheet__title::after,
+[data-shapes] .popup-pages__arrow::after,
+[data-shapes] .dialogue__box::after {
+  position: absolute;
+  top: -1.2rem;
+  inset-inline-start: 0;
+  padding: 0 0.3rem;
+  border-radius: 0.25rem;
+  font: 600 10px/1.4 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: white;
+  background: rgb(37 99 235 / 0.85);
+  pointer-events: none;
+  z-index: 5;
+}
+[data-shapes] .popup-surface::after { content: "PANEL"; }
+[data-shapes] .popup-frame__screen::after { content: "SCREEN"; top: 0.2rem; inset-inline-start: 0.2rem; }
+[data-shapes] .popup-sheet__close::after { content: "CLOSE"; }
+[data-shapes] .popup-sheet__title::after { content: "TITLE STRIP"; }
+[data-shapes] .popup-pages__arrow::after { content: "ARROW"; }
+[data-shapes] .dialogue__box::after { content: "DIALOGUE BOX"; top: auto; bottom: -1.2rem; }

@@ -1,0 +1,358 @@
+diff --git a/src/app/script/app/kl-app.ts b/src/app/script/app/kl-app.ts
+index aa76c42..997231c 100644
+--- a/src/app/script/app/kl-app.ts
++++ b/src/app/script/app/kl-app.ts
+@@ -44,6 +44,7 @@ import { LayersUi } from '../klecks/ui/tool-tabs/layers-ui/layers-ui';
+ import { TVector2D } from '../bb/bb-types';
+ import { createConsoleApi } from './console-api';
+ import { KL_CONFIG } from '../klecks/kl-config';
++import { applyBrushSizeLimits } from '../klecks/brushes-ui/brush-size-limits'; // [creatofolio patch]
+ import { TRenderTextParam } from '../klecks/image-operations/render-text';
+ import { Easel } from '../klecks/ui/easel/easel';
+ import { EaselHand } from '../klecks/ui/easel/tools/easel-hand';
+@@ -126,6 +127,7 @@ export class KlApp {
+     private readonly klCanvas: KlCanvas;
+     private uiLayout: TUiLayout;
+     private readonly embed: undefined | TKlAppOptionsEmbed;
++    private setBrushDiameterImpl: ((px: number) => void) | undefined; // [creatofolio patch]
+     private readonly saveToComputer: SaveToComputer;
+     private readonly lineSanitizer: LineSanitizer;
+     private readonly easel: Easel<TKlAppToolId>;
+@@ -249,6 +251,10 @@ export class KlApp {
+ 
+     constructor(p: TKlAppParams) {
+         this.embed = p.embed;
++        // [creatofolio patch] bigger brush sliders, relative to the canvas size.
++        if (p.project) {
++            applyBrushSizeLimits(KL.BRUSHES_UI, p.project.width, p.project.height);
++        }
+         // default 2048, unless your screen is bigger than that (that computer then probably has the horsepower for that)
+         // but not larger than 4096 - a fairly arbitrary decision
+         const maxCanvasSize = Math.min(
+@@ -1340,6 +1346,13 @@ export class KlApp {
+             this.toolspaceToolRow.setActive('brush');
+             updateMainTabVisibility();
+         };
++        // [creatofolio patch] set the active brush's diameter (quick size presets).
++        this.setBrushDiameterImpl = (px: number) => {
++            const slider = KL.BRUSHES_UI[currentBrushId].sizeSlider;
++            const radius = BB.clamp(px / 2, slider.min, slider.max);
++            currentBrushUi.setSize(radius);
++            sizeWatcher(radius);
++        };
+ 
+         const setCurrentLayer = (layer: TKlCanvasLayer) => {
+             currentLayer = layer;
+@@ -2291,6 +2304,52 @@ export class KlApp {
+         return this.klCanvas.getProject();
+     }
+ 
++    // [creatofolio patch] ---- export + guide API used by the host page's iframe bridge ----
++
++    /** PNG of every visible layer EXCEPT those whose name starts with the prefix
++     *  (the GUIDE reference layers). One composite canvas, freed right after. */
++    async getPNGExcludingLayers(excludeNamePrefix: string): Promise<Blob> {
++        const project = this.klCanvas.getProject();
++        project.layers = project.layers.filter((l) => !l.name.startsWith(excludeNamePrefix));
++        const canvas = drawProject(project, 1);
++        try {
++            return await canvasToBlob(canvas, 'image/png');
++        } finally {
++            BB.freeCanvas(canvas);
++        }
++    }
++
++    /** Names + visibility of the layers, bottom to top. */
++    getLayerSummary(): { name: string; isVisible: boolean }[] {
++        return this.klCanvas.getLayers().map((l) => ({ name: l.name, isVisible: l.isVisible }));
++    }
++
++    /** Shows / hides every layer whose name starts with the prefix. History is
++     *  paused so this never becomes an undo step. Returns how many changed. */
++    setLayersVisibleByNamePrefix(namePrefix: string, isVisible: boolean): number {
++        let changed = 0;
++        this.klHistory.pause(true);
++        try {
++            this.klCanvas.getLayers().forEach((layer, index) => {
++                if (layer.name.startsWith(namePrefix) && layer.isVisible !== isVisible) {
++                    this.klCanvas.setLayerIsVisible(index, isVisible);
++                    changed++;
++                }
++            });
++        } finally {
++            this.klHistory.pause(false);
++        }
++        if (changed > 0) {
++            this.layersUi.update();
++            this.easelProjectUpdater.update();
++        }
++        return changed;
++    }
++
++    setBrushDiameter(px: number): void {
++        this.setBrushDiameterImpl?.(px);
++    }
++
+     swapUiLeftRight(): void {
+         this.uiLayout = this.uiLayout === 'left' ? 'right' : 'left';
+         if (!this.embed) {
+diff --git a/src/app/script/bb/input/event-chain/pencil-aware-limiter.ts b/src/app/script/bb/input/event-chain/pencil-aware-limiter.ts
+new file mode 100644
+index 0000000..9528ca7
+--- /dev/null
++++ b/src/app/script/bb/input/event-chain/pencil-aware-limiter.ts
+@@ -0,0 +1,60 @@
++import { TChainOutFunc } from './event-chain.types';
++import { TPointerEvent } from '../event.types';
++import { OnePointerLimiter } from './one-pointer-limiter';
++import { KL_CONFIG } from '../../../klecks/kl-config';
++
++/**
++ * [creatofolio patch] New file. Replaces OnePointerLimiter in the easel's chain.
++ *
++ * Pencil only OFF: exactly OnePointerLimiter.
++ * Pencil only ON: a pen/mouse pointer and a finger are tracked separately, and a
++ * resting palm can never block the Pencil: while the pen is down every finger
++ * event is dropped (and a finger that lands during a stroke stays ignored until
++ * it lifts). The easel pans with whatever finger events come out (see easel.ts).
++ *
++ * in IPointerEvent
++ * out IPointerEvent
++ */
++export class PencilAwareLimiter {
++    private chainOut: TChainOutFunc | undefined;
++    private readonly legacy = new OnePointerLimiter();
++    private readonly touchLimiter = new OnePointerLimiter();
++    private readonly penLimiter = new OnePointerLimiter();
++    private isPenDown = false;
++    private readonly ignoredTouchIds = new Set<number>();
++
++    // ----------------------------------- public -----------------------------------
++    chainIn(event: TPointerEvent): TPointerEvent | null {
++        if (!KL_CONFIG.pencilOnly) {
++            return this.legacy.chainIn(event);
++        }
++
++        if (event.pointerType === 'touch') {
++            if (this.ignoredTouchIds.has(event.pointerId)) {
++                if (event.type === 'pointerup') {
++                    this.ignoredTouchIds.delete(event.pointerId);
++                }
++                return null;
++            }
++            if (event.type === 'pointerdown' && this.isPenDown) {
++                this.ignoredTouchIds.add(event.pointerId);
++                return null;
++            }
++            const out = this.touchLimiter.chainIn(event);
++            return this.isPenDown ? null : out;
++        }
++
++        const out = this.penLimiter.chainIn(event);
++        if (out && event.type === 'pointerdown') {
++            this.isPenDown = true;
++        }
++        if (event.type === 'pointerup' && out) {
++            this.isPenDown = false;
++        }
++        return out;
++    }
++
++    setChainOut(func: TChainOutFunc): void {
++        this.chainOut = func;
++    }
++}
+diff --git a/src/app/script/embed/bootstrap/embed-wrapper.ts b/src/app/script/embed/bootstrap/embed-wrapper.ts
+index d118352..cf60507 100644
+--- a/src/app/script/embed/bootstrap/embed-wrapper.ts
++++ b/src/app/script/embed/bootstrap/embed-wrapper.ts
+@@ -7,6 +7,7 @@ import { THEME } from '../../theme/theme';
+ import { loadAgPsd } from '../../klecks/storage/load-ag-psd';
+ import { randomUuid } from '../../bb/base/base';
+ import { createImage } from '../../bb/base/ui';
++import { KL_CONFIG } from '../../klecks/kl-config'; // [creatofolio patch]
+ 
+ // only one instance can exist
+ let wrapperCreated = false;
+@@ -99,6 +100,13 @@ export class EmbedWrapper {
+ 
+             this.getPNG = () => this.instance!.getPNG();
+             this.getPSD = () => this.instance!.getPSD();
++            // [creatofolio patch] public bridge API (see main-embed.ts)
++            this.getLayersForExport = () => this.instance!.getProject();
++            this.getPNGExcludingLayers = (prefix) => this.instance!.getPNGExcludingLayers(prefix);
++            this.getLayerSummary = () => this.instance!.getLayerSummary();
++            this.setLayersVisibleByNamePrefix = (prefix, v) =>
++                this.instance!.setLayersVisibleByNamePrefix(prefix, v);
++            this.setBrushDiameter = (px) => this.instance!.setBrushDiameter(px);
+ 
+             if (this.project) {
+                 this.instance.openProject(this.project);
+@@ -162,4 +170,19 @@ export class EmbedWrapper {
+ 
+     getPNG: (() => Promise<Blob>) | undefined = undefined;
+     getPSD: (() => Promise<Blob>) | undefined = undefined;
++
++    // [creatofolio patch] Public API the bridge relies on instead of private fields
++    // (which differ between Klecks versions and builds). Bump STUDIO_API_VERSION
++    // when its meaning changes; the bridge refuses unknown versions.
++    readonly studioApiVersion = 1;
++    getLayersForExport: (() => TKlProject) | undefined = undefined;
++    getPNGExcludingLayers: ((excludeNamePrefix: string) => Promise<Blob>) | undefined = undefined;
++    getLayerSummary: (() => { name: string; isVisible: boolean }[]) | undefined = undefined;
++    setLayersVisibleByNamePrefix: ((namePrefix: string, isVisible: boolean) => number) | undefined =
++        undefined;
++    setBrushDiameter: ((px: number) => void) | undefined = undefined;
++    /** Pencil only works before and after the app exists (a module flag). */
++    setPencilOnly(isOn: boolean): void {
++        KL_CONFIG.pencilOnly = isOn;
++    }
+ }
+diff --git a/src/app/script/klecks/brushes-ui/brush-size-limits.ts b/src/app/script/klecks/brushes-ui/brush-size-limits.ts
+new file mode 100644
+index 0000000..2b29b66
+--- /dev/null
++++ b/src/app/script/klecks/brushes-ui/brush-size-limits.ts
+@@ -0,0 +1,31 @@
++// [creatofolio patch] New file. Klecks caps pen / blend / pixel brushes at 200 px and
++// the eraser at 400 px, which is tiny on the 4096-px backdrops drawn here.
++// The slider's size value is a RADIUS (the label shows value * 2), so a
++// diameter of D px is a slider value of D / 2.
++import { BB } from '../../bb/bb';
++import { TBrushUi } from '../kl-types';
++
++const SCALED_BRUSHES = ['penBrush', 'blendBrush', 'pixelBrush', 'eraserBrush', 'smudgeBrush'];
++
++/** Largest brush diameter (px) for a canvas: 1/8 of the long side, 500..1000. */
++export function maxBrushDiameterFor(width: number, height: number): number {
++    return Math.min(1000, Math.max(500, Math.round(Math.max(width, height) / 8)));
++}
++
++/** Raises (never lowers) the size slider max of the big brushes. The curve stays
++ *  a power curve, so small sizes keep their fine control. */
++export function applyBrushSizeLimits(
++    brushesUi: Record<string, TBrushUi<any>>,
++    width: number,
++    height: number,
++): void {
++    const maxRadius = maxBrushDiameterFor(width, height) / 2;
++    SCALED_BRUSHES.forEach((id) => {
++        const slider = brushesUi[id]?.sizeSlider;
++        if (!slider || slider.max >= maxRadius) {
++            return;
++        }
++        slider.max = maxRadius;
++        slider.curve = BB.powerSplineInput(slider.min, maxRadius, 0.1);
++    });
++}
+diff --git a/src/app/script/klecks/kl-config.ts b/src/app/script/klecks/kl-config.ts
+index bbfcdf1..7a6f5be 100644
+--- a/src/app/script/klecks/kl-config.ts
++++ b/src/app/script/klecks/kl-config.ts
+@@ -1,6 +1,8 @@
+ type TKlConfig = {
+     filenameBase: string; // part of filename when downloading drawing
+     disableAutoFit?: boolean;
++    // [creatofolio patch] Pencil only: touch pointers never paint, they pan the canvas.
++    pencilOnly?: boolean;
+ };
+ 
+ export const KL_CONFIG: TKlConfig = {
+diff --git a/src/app/script/klecks/ui/easel/easel-pointer-preprocessor.ts b/src/app/script/klecks/ui/easel/easel-pointer-preprocessor.ts
+index c928629..71e99f1 100644
+--- a/src/app/script/klecks/ui/easel/easel-pointer-preprocessor.ts
++++ b/src/app/script/klecks/ui/easel/easel-pointer-preprocessor.ts
+@@ -5,6 +5,7 @@ import { BB } from '../../../bb/bb';
+ import { EventChain } from '../../../bb/input/event-chain/event-chain';
+ import { TChainElement } from '../../../bb/input/event-chain/event-chain.types';
+ import { TPointerEvent, TPointerType } from '../../../bb/input/event.types';
++import { PencilAwareLimiter } from '../../../bb/input/event-chain/pencil-aware-limiter'; // [creatofolio patch]
+ 
+ export type TEaselPointerPreprocessor = {
+     onChainOut: (e: TPointerEvent) => void;
+@@ -58,7 +59,7 @@ export class EaselPointerPreprocessor {
+                 this.mainDoubleTapper as TChainElement,
+                 this.middleDoubleTapper as TChainElement,
+                 this.pinchZoomer as TChainElement,
+-                new BB.OnePointerLimiter() as TChainElement,
++                new PencilAwareLimiter() as TChainElement, // [creatofolio patch] was BB.OnePointerLimiter
+             ],
+         });
+         this.pointerEventChain.setChainOut(p.onChainOut);
+diff --git a/src/app/script/klecks/ui/easel/easel.ts b/src/app/script/klecks/ui/easel/easel.ts
+index 3f42842..1aaa9fe 100644
+--- a/src/app/script/klecks/ui/easel/easel.ts
++++ b/src/app/script/klecks/ui/easel/easel.ts
+@@ -91,6 +91,7 @@ export class Easel<GToolId extends string> {
+     private lastRenderedTransform: TViewportTransform = {} as TViewportTransform; // previously rendered viewport transformation
+     private pinchInitialTransform: TViewportTransform | undefined; // when starting a pinch-to-zoom gesture
+     private targetTransform: TViewportTransform = {} as TViewportTransform;
++    private touchPanLast: { x: number; y: number } | undefined; // [creatofolio patch] pencil-only finger pan
+ 
+     // custom interface passed to tools
+     private readonly easelInterface: TEaselInterface = {
+@@ -403,6 +404,22 @@ export class Easel<GToolId extends string> {
+                     x: e.relX,
+                     y: e.relY,
+                 };
++                // [creatofolio patch] Pencil only: a lone finger pans, it never reaches a tool.
++                if (KL_CONFIG.pencilOnly && e.pointerType === 'touch') {
++                    if (e.type === 'pointerdown') {
++                        this.touchPanLast = { x: e.relX, y: e.relY };
++                    } else if (e.type === 'pointermove' && this.touchPanLast) {
++                        const transform = { ...this.viewport.getTransform() };
++                        transform.x += e.relX - this.touchPanLast.x;
++                        transform.y += e.relY - this.touchPanLast.y;
++                        this.touchPanLast = { x: e.relX, y: e.relY };
++                        this.setTargetTransform(transform, true);
++                        this.requestRender();
++                    } else if (e.type === 'pointerup') {
++                        this.touchPanLast = undefined;
++                    }
++                    return;
++                }
+                 if (e.type === 'pointerdown') {
+                     if (e.button === 'middle') {
+                         mouseMiddleIsDown = true;
+diff --git a/src/app/script/main-embed.ts b/src/app/script/main-embed.ts
+index 73a2f63..a1b0d03 100644
+--- a/src/app/script/main-embed.ts
++++ b/src/app/script/main-embed.ts
+@@ -117,6 +117,37 @@ export class Embed {
+         return await this.klApp.getPSD();
+     }
+ 
++    // [creatofolio patch] ---- API used by the host page's iframe bridge (public, stable names) ----
++    getProject(): TKlProject {
++        if (!this.klApp) {
++            throw new Error('App not initialized');
++        }
++        return this.klApp.getProject();
++    }
++
++    async getPNGExcludingLayers(excludeNamePrefix: string): Promise<Blob> {
++        if (!this.klApp) {
++            throw new Error('App not initialized');
++        }
++        return await this.klApp.getPNGExcludingLayers(excludeNamePrefix);
++    }
++
++    getLayerSummary(): { name: string; isVisible: boolean }[] {
++        return this.klApp ? this.klApp.getLayerSummary() : [];
++    }
++
++    setLayersVisibleByNamePrefix(namePrefix: string, isVisible: boolean): number {
++        return this.klApp ? this.klApp.setLayersVisibleByNamePrefix(namePrefix, isVisible) : 0;
++    }
++
++    setBrushDiameter(px: number): void {
++        this.klApp?.setBrushDiameter(px);
++    }
++
++    setPencilOnly(isOn: boolean): void {
++        KL_CONFIG.pencilOnly = isOn;
++    }
++
+     readPSDs(psds: TReadPSD[]) {
+         if (psds.length === 0) {
+             return;

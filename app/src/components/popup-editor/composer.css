@@ -1,0 +1,77 @@
+/* Pop-up composer (components/popup-editor). The preview reuses the visitor
+   sheet's own CSS (components/popup/popup.css); this file only adds the
+   authoring chrome: preview frames, block selection, and the rich-text
+   field's two-column layout. */
+
+/* ── Preview ── */
+.composer-preview {
+  background:
+    radial-gradient(ellipse at 50% 40%, rgb(255 255 255 / 0.04), transparent 70%),
+    #1b1714;
+}
+.composer-frame--desktop {
+  width: 100%;
+  height: 100%;
+  min-height: 28rem;
+  border-radius: 0.75rem;
+  background: #3a2f27;
+}
+.composer-frame--phone {
+  width: 390px;
+  max-width: 100%;
+  height: min(844px, 100%);
+  min-height: 32rem;
+  border-radius: 2.25rem;
+  border: 10px solid #0d0b0a;
+  background: #3a2f27;
+  box-shadow: 0 20px 60px -20px rgb(0 0 0 / 0.8);
+}
+.composer-preview .popup-backdrop--preview { background: rgb(20 16 12 / 0.45); }
+
+/* Click-to-select: an outline on the block's own wrapper, never a positioned
+   overlay (.popup-blocks is a size container; see popup.css). */
+.composer-preview .popup-block {
+  cursor: pointer;
+  border-radius: 6px;
+  outline: 1px dashed transparent;
+  outline-offset: 5px;
+  transition: outline-color 120ms ease;
+}
+/* Hovering a block inside a container outlines only the inner one. */
+.composer-preview .popup-block:hover:not(:has(.popup-block:hover)) { outline-color: rgb(96 165 250 / 0.55); }
+.composer-preview .popup-block[data-selected] { outline: 2px solid rgb(96 165 250); }
+.composer-preview .popup-sheet__drag { cursor: pointer; }
+
+/* ── Rich-text field: tabs when narrow, two columns when the panel is wide ── */
+.rt-field {
+  container-type: inline-size;
+  /* The prose styles read section ink: use the editor's own colours here. */
+  --section-ink: var(--foreground);
+  --section-ink-soft: var(--muted-foreground);
+}
+.rt-cols { display: grid; gap: 0.5rem; }
+.rt-col { display: none; }
+.rt-col[data-active] { display: block; }
+.rt-col-label { display: none; }
+@container (min-width: 560px) {
+  .rt-tabs { display: none; }
+  .rt-cols { grid-template-columns: 1fr 1fr; }
+  .rt-col { display: block; }
+  .rt-col-label { display: block; margin-bottom: 0.25rem; }
+}
+.rt-editor {
+  min-height: 8rem;
+  padding: 0.6rem 0.75rem;
+  outline: none;
+  font-size: 0.9rem;
+}
+.rt-placeholder {
+  position: absolute;
+  inset-inline: 0.75rem;
+  top: 0.6rem;
+  font-size: 0.9rem;
+  pointer-events: none;
+  opacity: 0.45;
+}
+.rt-editor img { max-width: 100%; height: auto; border-radius: 0.375rem; }
+.rt-editor .ProseMirror-selectednode { outline: 2px solid rgb(96 165 250); }

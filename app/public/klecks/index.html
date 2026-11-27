@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<!--
+  Klecks iframe wrapper ("the bridge"). The React hosts (LandingDrawModal,
+  DrawModalInner) embed this page and talk to it with postMessage; see
+  src/components/studio/studioProtocol.ts for the message shapes.
+
+  What the bridge owns:
+  - open / export: the host posts "open" with a project (or PSD / spec) and later
+    "requestExport"; the bridge answers with PNG + PSD blobs.
+  - GUIDE layers (name starts with "GUIDE") are reference art kept in the PSD but
+    NEVER in the PNG. Export goes through three guide-proof paths (below) and
+    reports which one it used; it never falls back to a flattening getPNG while a
+    guide may exist.
+  - Pencil only (touch pans, only the pen draws), brush presets, guide toggle.
+  - iPad hardening: no Safari page zoom / tab overview, no callout, no
+    double-tap zoom, no rubber band.
+  - Autosave of the open project (PSD) to IndexedDB, offered back on reopen.
+
+  The bridge only uses PUBLIC methods of the patched Klecks embed wrapper
+  (klecks.studioApiVersion === 1: getLayersForExport, getPNGExcludingLayers,
+  getLayerSummary, setLayersVisibleByNamePrefix, setBrushDiameter,
+  setPencilOnly, getPNG, getPSD, readPSD, openProject). Never private fields:
+  those differ between Klecks versions and build modes.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Drawing Studio</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background: #0a0a0a;
+      color: #eee;
+      font-family: system-ui, sans-serif;
+      /* The studio handles every gesture itself: the browser must not zoom the
+         page, rubber-band it, select text or show the long-press callout.
+         Scrollable panels (their own overflow) keep native scrolling. */
+      touch-action: none;
+      overscroll-behavior: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    input, textarea, [contenteditable="true"] {
+      -webkit-user-select: text;
+      user-select: text;
+      touch-action: manipulation;
+    }
+    #boot-msg {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      font-size: 13px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div id="boot-msg">Loading drawing studio…</div>
+  <script src="./embed.js"></script>
+  <script>
+    (function () {
+      var PARENT_ORIGIN = window.location.origin;
+      var IS_DEV_HOST = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+      var API_VERSION = 1;
+      var GUIDE_PREFIX = "GUIDE";
+      var klecks = null;
+      var pendingSubmit = null;
+      var guideDeclared = false; // the host said this drawing has a guide layer
+      var openInfo = { width: 0, height: 0, layerCount: 0 };
+      var openStarted = false;
+
+      function post(msg, transfer) {
+        window.parent.postMessage(msg, PARENT_ORIGIN, transfer || []);
+      }
+      function clearBootMsg() {
+        var el = document.getElementById("boot-msg");
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+      }
+      function isGuide(name) {
+        return typeof name === "string" && name.indexOf(GUIDE_PREFIX) === 0;
+      }
+      function hasApi() {
+        return !!klecks && klecks.studioApiVersion === API_VERSION;
+      }
+      function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+      function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
+      function ssGet(k) { try { return window.sessionStorage.getItem(k); } catch (e) { return null; } }
+      function ssSet(k, v) { try { window.sessionStorage.setItem(k, v); } catch (e) {} }
+
+      // ───────────────────────── iPad hardening ─────────────────────────
+      // Safari's own pinch (page zoom / tab overview) fires gesture events that
+      // ignore touch-action: cancel them. Double-tap zoom and the context menu too.
+      ["gesturestart", "gesturechange", "gestureend"].forEach(function (t) {
+        document.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false });
+      });
+      document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+      document.addEventListener("dblclick", function (e) {
+        var t = e.target;
+        if (!(t && t.closest && t.closest("input, textarea"))) e.preventDefault();
+      });
+      document.addEventListener("selectstart", function (e) {
+        var t = e.target && (e.target.nodeType === 1 ? e.target : e.target.parentElement);
+        if (!(t && t.closest && t.closest("input, textarea"))) e.preventDefault();
+      });
+
+      // ───────────────────────── canvas helpers ─────────────────────────
+      function urlToCanvas(url, w, h) {
+        return new Promise(function (resolve, reject) {
+          var img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = function () {
+            var canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            var ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas);
+          };
+          img.onerror = function () {
+            reject(new Error("Failed to load image: " + url));
+          };
+          img.src = url;
+        });
+      }
+      function freeCanvas(c) {
+        // iOS keeps canvas memory until the backing store is shrunk.
+        try { c.width = 1; c.height = 1; } catch (e) {}
+      }
+
+      async function buildProjectFromSpec(spec) {
+        var layers = [];
+        for (var i = 0; i < spec.layers.length; i++) {
+          var lyr = spec.layers[i];
+          var layerImage;
+          if (lyr.imageUrl) {
+            try {
+              layerImage = await urlToCanvas(lyr.imageUrl, spec.width, spec.height);
+            } catch (e) {
+              // CORS or 404 — fall back to a transparent layer so the
+              // user can still draw. We surface the error to the parent.
+              post({ type: "error", message: "Reference image failed to load: " + e.message });
+              var c = document.createElement("canvas");
+              c.width = spec.width;
+              c.height = spec.height;
+              layerImage = c;
+            }
+          } else if (lyr.fill) {
+            layerImage = { fill: lyr.fill };
+          } else {
+            var c2 = document.createElement("canvas");
+            c2.width = spec.width;
+            c2.height = spec.height;
+            layerImage = c2;
+          }
+          layers.push({
+            name: lyr.name,
+            isVisible: true,
+            opacity: typeof lyr.opacity === "number" ? lyr.opacity : 1,
+            mixModeStr: "source-over",
+            image: layerImage,
+          });
+        }
+        return { width: spec.width, height: spec.height, layers: layers };
+      }
+
+      // ───────────────────────── guide-proof PNG export ─────────────────────────
+      // Three paths, tried in order, each of which leaves the GUIDE layers out:
+      //   native   Klecks composes the PNG without them (one canvas).
+      //   project  we compose it ourselves from the layers' canvases (one canvas).
+      //   hide     hide the guides through Klecks's own API, getPNG(), restore.
+      // If none works we THROW: a silent flatten would bake the guide into the art.
+      var PATH_ORDER = ["native", "project", "hide"];
+
+      function layerSummary() {
+        try {
+          return hasApi() && klecks.getLayerSummary ? klecks.getLayerSummary() : [];
+        } catch (e) {
+          return [];
+        }
+      }
+      function guideLayers() {
+        return layerSummary().filter(function (l) { return isGuide(l.name); });
+      }
+
+      function canvasToPngBlob(c) {
+        return new Promise(function (resolve, reject) {
+          c.toBlob(function (b) {
+            if (b) resolve(b);
+            else reject(new Error("PNG encode failed"));
+          }, "image/png");
+        });
+      }
+
+      async function exportViaNative() {
+        if (!hasApi() || typeof klecks.getPNGExcludingLayers !== "function") {
+          throw new Error("native export is not available in this Klecks build");
+        }
+        return await klecks.getPNGExcludingLayers(GUIDE_PREFIX);
+      }
+      async function exportViaProject() {
+        if (!hasApi() || typeof klecks.getLayersForExport !== "function") {
+          throw new Error("layer access is not available in this Klecks build");
+        }
+        var proj = klecks.getLayersForExport();
+        var c = document.createElement("canvas");
+        c.width = proj.width;
+        c.height = proj.height;
+        var ctx = c.getContext("2d");
+        try {
+          proj.layers.forEach(function (l) {
+            if (!l.isVisible || l.opacity === 0 || isGuide(l.name)) return;
+            ctx.globalAlpha = l.opacity;
+            ctx.globalCompositeOperation = l.mixModeStr || "source-over";
+            if (l.image && l.image.fill) {
+              ctx.fillStyle = l.image.fill;
+              ctx.fillRect(0, 0, c.width, c.height);
+            } else {
+              ctx.drawImage(l.image, 0, 0);
+            }
+          });
+          return await canvasToPngBlob(c);
+        } finally {
+          freeCanvas(c);
+        }
+      }
+      async function exportViaHide() {
+        if (!hasApi() || typeof klecks.setLayersVisibleByNamePrefix !== "function") {
+          throw new Error("layer visibility is not available in this Klecks build");
+        }
+        var wasVisible = guideLayers().some(function (l) { return l.isVisible; });
+        klecks.setLayersVisibleByNamePrefix(GUIDE_PREFIX, false);
+        try {
+          return await klecks.getPNG();
+        } finally {
+          if (wasVisible) klecks.setLayersVisibleByNamePrefix(GUIDE_PREFIX, true);
+        }
+      }
+      var PATHS = { native: exportViaNative, project: exportViaProject, hide: exportViaHide };
+
+      /** Returns { blob, path, guideStripped }. `force` (dev hosts only) runs one
+       *  path on its own, or "getPNG" = the OLD flattening export, to prove the
+       *  host refuses it. */
+      async function exportPNG(force) {
+        if (force && IS_DEV_HOST) {
+          if (force === "getPNG") {
+            return { blob: await klecks.getPNG(), path: "getPNG", guideStripped: guideLayers().length === 0 };
+          }
+          if (PATHS[force]) return { blob: await PATHS[force](), path: force, guideStripped: true };
+          throw new Error("unknown export path: " + force);
+        }
+        if (!hasApi()) {
+          // An unpatched Klecks can't strip anything. Fine for a drawing that has
+          // no guide; never for one that does.
+          if (guideDeclared) {
+            throw new Error("This studio build can't leave the guide out of the picture. Nothing was saved.");
+          }
+          return { blob: await klecks.getPNG(), path: "plain", guideStripped: true };
+        }
+        var errors = [];
+        for (var i = 0; i < PATH_ORDER.length; i++) {
+          var p = PATH_ORDER[i];
+          try {
+            return { blob: await PATHS[p](), path: p, guideStripped: true };
+          } catch (e) {
+            errors.push(p + ": " + (e && e.message || String(e)));
+          }
+        }
+        throw new Error("Couldn't leave the guide out of the picture (" + errors.join("; ") + "). Nothing was saved.");
+      }
+
+      // ───────────────────────── Pencil only ─────────────────────────
+      // Mode 'on' | 'off' | 'auto' (= on once a Pencil has touched the screen in
+      // this browser session). Remembered in localStorage.
+      var PENCIL_KEY = "creatofolio-studio:pencil-only";
+      var pencilMode = lsGet(PENCIL_KEY);
+      if (pencilMode !== "on" && pencilMode !== "off") pencilMode = "auto";
+      var penSeen = ssGet("creatofolio-studio:pen-seen") === "1";
+      function pencilEffective() {
+        return pencilMode === "on" || (pencilMode === "auto" && penSeen);
+      }
+      function applyPencil() {
+        if (klecks && typeof klecks.setPencilOnly === "function") {
+          klecks.setPencilOnly(pencilEffective());
+        }
+        postState(true);
+      }
+      document.addEventListener("pointerdown", function (e) {
+        if (e.pointerType === "pen" && !penSeen) {
+          penSeen = true;
+          ssSet("creatofolio-studio:pen-seen", "1");
+          applyPencil();
+        }
+        markDirty(e);
+      }, true);
+
+      // ───────────────────────── state reported to the host ─────────────────────────
+      var lastState = "";
+      function memoryWarning() {
+        var px = openInfo.width * openInfo.height;
+        if (!px) return null;
+        if (px > 16777216) {
+          return "This canvas (" + openInfo.width + "×" + openInfo.height + ") is bigger than an iPad's canvas limit (about 16 million pixels). It may fail to draw or save. Start a smaller canvas.";
+        }
+        var layers = Math.max(1, layerSummary().length || openInfo.layerCount);
+        if (px * layers > 60000000) {
+          return "Many layers on a big canvas can run an iPad out of memory. Merge or delete layers you don't need.";
+        }
+        return null;
+      }
+      function postState(force) {
+        var layers = layerSummary();
+        var guides = layers.filter(function (l) { return isGuide(l.name); });
+        var state = {
+          type: "studioState",
+          apiOk: hasApi(),
+          guideCount: guides.length,
+          guidesVisible: guides.length > 0 && guides.some(function (g) { return g.isVisible; }),
+          layerCount: layers.length,
+          pencilMode: pencilMode,
+          pencilOnly: pencilEffective(),
+          penSeen: penSeen,
+          canvasW: openInfo.width,
+          canvasH: openInfo.height,
+          memoryWarning: memoryWarning(),
+        };
+        var key = JSON.stringify(state);
+        if (!force && key === lastState) return;
+        lastState = key;
+        post(state);
+      }
+      setInterval(function () { postState(false); }, 700);
+
+      // ───────────────────────── autosave (IndexedDB) ─────────────────────────
+      var autosaveKey = null;
+      var dirty = false;
+      var autosaveTimer = null;
+      var autosaving = false;
+      var AUTOSAVE_IDLE_MS = 4000;
+      var DB_NAME = "creatofolio-studio";
+      var STORE = "autosave";
+
+      function idb() {
+        return new Promise(function (resolve, reject) {
+          if (!window.indexedDB) return reject(new Error("no indexedDB"));
+          var req = indexedDB.open(DB_NAME, 1);
+          req.onupgradeneeded = function () { req.result.createObjectStore(STORE, { keyPath: "key" }); };
+          req.onsuccess = function () { resolve(req.result); };
+          req.onerror = function () { reject(req.error); };
+        });
+      }
+      function idbRun(mode, fn) {
+        return idb().then(function (db) {
+          return new Promise(function (resolve, reject) {
+            var tx = db.transaction(STORE, mode);
+            var out = fn(tx.objectStore(STORE));
+            tx.oncomplete = function () { db.close(); resolve(out && out.result); };
+            tx.onerror = function () { db.close(); reject(tx.error); };
+            tx.onabort = function () { db.close(); reject(tx.error); };
+          });
+        });
+      }
+      function autosaveGet(key) { return idbRun("readonly", function (s) { return s.get(key); }).catch(function () { return null; }); }
+      function autosavePut(rec) { return idbRun("readwrite", function (s) { return s.put(rec); }); }
+      function autosaveDelete(key) { return idbRun("readwrite", function (s) { return s.delete(key); }).catch(function () {}); }
+
+      function markDirty(e) {
+        if (!autosaveKey || !klecks) return;
+        // Only presses that can edit: a finger in pencil-only mode just pans.
+        if (e && e.pointerType === "touch" && pencilEffective()) return;
+        dirty = true;
+        if (autosaveTimer) clearTimeout(autosaveTimer);
+        autosaveTimer = setTimeout(function () { autosaveNow(false); }, AUTOSAVE_IDLE_MS);
+      }
+      document.addEventListener("keyup", function () { markDirty(null); }, true);
+
+      async function autosaveNow(urgent) {
+        if (!autosaveKey || !klecks || !dirty || autosaving || !hasApi()) return;
+        autosaving = true;
+        var started = dirty;
+        try {
+          var psd = await klecks.getPSD();
+          await autosavePut({
+            key: autosaveKey,
+            savedAt: Date.now(),
+            psd: psd,
+            width: openInfo.width,
+            height: openInfo.height,
+          });
+          if (started) dirty = false;
+          post({ type: "autosaved", at: Date.now() });
+        } catch (e) {
+          // Never interrupt drawing for this. The host shows nothing; the next
+          // idle pause tries again.
+          if (!urgent) post({ type: "autosaveFailed", message: String(e && e.message || e) });
+        } finally {
+          autosaving = false;
+        }
+      }
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "hidden") autosaveNow(true);
+      });
+      window.addEventListener("pagehide", function () { autosaveNow(true); });
+
+      // ───────────────────────── Klecks ─────────────────────────
+      function makeKlecks() {
+        return new window.Klecks({
+          onSubmit: function (onSuccess, onError) {
+            // User clicked Klecks's own OK button. Pull PNG + PSD and bounce
+            // them up to the parent; the parent runs the upload and posts back
+            // submitAck/submitError so we can close (onSuccess) or stay open.
+            (async function () {
+              try {
+                var png = await exportPNG();
+                var psd = await klecks.getPSD();
+                pendingSubmit = { onSuccess: onSuccess, onError: onError };
+                post({ type: "submit", png: png.blob, psd: psd, pngPath: png.path, guideStripped: png.guideStripped });
+              } catch (e) {
+                if (onError) onError();
+                post({
+                  type: "error",
+                  message: "submit failed: " + (e && e.message || String(e)),
+                });
+              }
+            })();
+          },
+        });
+      }
+
+      async function resolveProject(msg, useAutosavePsd) {
+        var project;
+        var psdBuffer = useAutosavePsd || msg.psdBuffer;
+        if (psdBuffer) {
+          project = await klecks.readPSD(psdBuffer);
+          // A reopened drawing gets a FRESH guide: drop the GUIDE layers
+          // saved in the PSD (made from older settings) and put the
+          // current one at the bottom.
+          if (msg.guide && msg.guide.imageUrl && project && project.layers) {
+            var kept = project.layers.filter(function (l) { return !isGuide(l.name); });
+            try {
+              var g = await urlToCanvas(msg.guide.imageUrl, project.width, project.height);
+              kept.unshift({
+                name: msg.guide.name || "GUIDE — reference, not saved",
+                isVisible: true,
+                opacity: typeof msg.guide.opacity === "number" ? msg.guide.opacity : 0.45,
+                mixModeStr: "source-over",
+                image: g,
+              });
+              guideDeclared = true;
+            } catch (e) {
+              post({ type: "error", message: "Guide failed to load: " + e.message });
+            }
+            project.layers = kept;
+          }
+          if (project && project.layers && project.layers.some(function (l) { return isGuide(l.name); })) {
+            guideDeclared = true;
+          }
+        } else if (msg.spec) {
+          project = await buildProjectFromSpec(msg.spec);
+          guideDeclared = project.layers.some(function (l) { return isGuide(l.name); });
+        } else if (msg.project) {
+          project = msg.project;
+          guideDeclared = project.layers.some(function (l) { return isGuide(l.name); });
+        } else {
+          throw new Error("open message missing project/spec/psdBuffer");
+        }
+        return project;
+      }
+
+      var restoreWaiter = null;
+      async function handleOpen(msg) {
+        clearBootMsg();
+        if (openStarted) return; // Klecks accepts ONE project per page load
+        openStarted = true;
+        if (!klecks) klecks = makeKlecks();
+        try {
+          autosaveKey = msg.autosaveKey || null;
+          var restorePsd = null;
+          if (autosaveKey) {
+            var rec = await autosaveGet(autosaveKey);
+            if (rec && rec.psd) {
+              var restore = await new Promise(function (resolve) {
+                restoreWaiter = resolve;
+                post({ type: "restoreOffer", savedAt: rec.savedAt, width: rec.width, height: rec.height });
+              });
+              restoreWaiter = null;
+              if (restore) restorePsd = await rec.psd.arrayBuffer();
+              else await autosaveDelete(autosaveKey);
+            }
+          }
+          var project = await resolveProject(msg, restorePsd);
+          openInfo = {
+            width: project.width,
+            height: project.height,
+            layerCount: project.layers ? project.layers.length : 0,
+          };
+          klecks.openProject(project);
+          applyPencil();
+          dirty = !!restorePsd; // a restored drawing is unsaved work
+          postState(true);
+        } catch (e) {
+          post({
+            type: "error",
+            message: "open failed: " + (e && e.message || String(e)),
+          });
+        }
+      }
+
+      window.addEventListener("message", async function (ev) {
+        if (ev.origin !== PARENT_ORIGIN) return;
+        var msg = ev.data;
+        if (!msg || typeof msg !== "object") return;
+
+        if (msg.type === "open") {
+          await handleOpen(msg);
+          return;
+        }
+
+        if (msg.type === "restoreChoice") {
+          if (restoreWaiter) restoreWaiter(!!msg.restore);
+          return;
+        }
+
+        if (msg.type === "clearAutosave") {
+          dirty = false;
+          if (autosaveTimer) clearTimeout(autosaveTimer);
+          if (autosaveKey) await autosaveDelete(autosaveKey);
+          return;
+        }
+
+        if (msg.type === "autosaveNow") {
+          await autosaveNow(true);
+          return;
+        }
+
+        if (msg.type === "setPencilOnly") {
+          if (msg.mode === "on" || msg.mode === "off" || msg.mode === "auto") {
+            pencilMode = msg.mode;
+            lsSet(PENCIL_KEY, pencilMode);
+            if (pencilMode === "auto" && msg.resetPen) {
+              penSeen = false;
+              ssSet("creatofolio-studio:pen-seen", "0");
+            }
+            applyPencil();
+          }
+          return;
+        }
+
+        if (msg.type === "setGuidesVisible") {
+          if (hasApi()) klecks.setLayersVisibleByNamePrefix(GUIDE_PREFIX, !!msg.visible);
+          postState(true);
+          return;
+        }
+
+        if (msg.type === "setBrushDiameter") {
+          if (hasApi() && typeof klecks.setBrushDiameter === "function") {
+            klecks.setBrushDiameter(Number(msg.px) || 1);
+          }
+          return;
+        }
+
+        // Read-only: report layer names (tests / diagnostics).
+        if (msg.type === "listLayers") {
+          var names = layerSummary().map(function (l) { return l.name; });
+          post({ type: "layers", id: msg.id, names: names });
+          return;
+        }
+
+        if (msg.type === "requestExport") {
+          // Parent-driven export — used by our toolbar buttons (Save & Replace,
+          // Drop as Object, Save to Library). Returns both PNG and PSD blobs.
+          if (!klecks) {
+            post({ type: "exportResult", id: msg.id, error: "Klecks not initialized" });
+            return;
+          }
+          try {
+            var png = await exportPNG(msg.forcePath);
+            var psd = await klecks.getPSD();
+            post({
+              type: "exportResult",
+              id: msg.id,
+              png: png.blob,
+              psd: psd,
+              pngPath: png.path,
+              guideStripped: png.guideStripped,
+            });
+          } catch (e) {
+            post({
+              type: "exportResult",
+              id: msg.id,
+              error: e && e.message || String(e),
+            });
+          }
+          return;
+        }
+
+        if (msg.type === "submitAck") {
+          if (pendingSubmit) {
+            if (pendingSubmit.onSuccess) pendingSubmit.onSuccess();
+            pendingSubmit = null;
+          }
+          return;
+        }
+
+        if (msg.type === "submitError") {
+          if (pendingSubmit) {
+            if (pendingSubmit.onError) pendingSubmit.onError();
+            pendingSubmit = null;
+          }
+          return;
+        }
+      });
+
+      // embed.js is a Parcel IIFE that defers some setup. Wait until
+      // window.Klecks is the constructor before announcing ready.
+      var attempts = 0;
+      function announceReady() {
+        if (typeof window.Klecks === "function") {
+          post({ type: "ready" });
+          return;
+        }
+        attempts += 1;
+        if (attempts > 200) {
+          post({
+            type: "error",
+            message: "Klecks bundle did not expose window.Klecks within 10s",
+          });
+          return;
+        }
+        setTimeout(announceReady, 50);
+      }
+      announceReady();
+    })();
+  </script>
+</body>
+</html>
